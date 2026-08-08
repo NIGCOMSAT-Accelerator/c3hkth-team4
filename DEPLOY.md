@@ -11,6 +11,7 @@ service the other's URL.
 | API | Docker web service | Carries its routing graph in the image |
 | Frontend | Static site | Vite build, free, never spins down |
 | Database | Managed Postgres + PostGIS | Seeded once from a local dump |
+| Daily scoring | Cron job, 04:30 WAT | Re-scores every segment against today's rainfall |
 | Alerts | Cron job *(optional)* | Only if you want alerts firing in production |
 
 **No persistent disk is needed.** The API's only runtime file dependency is the
@@ -137,13 +138,31 @@ ends. Either configure `SMTP_HOST` and friends, or — better for the pitch —
 demo alerts locally, where the outbox persists and you can open a real file.
 The cron is commented as optional in `render.yaml` for exactly this reason.
 
-**Nothing scores daily in production.** `DEMO_DATE` is pinned to `2026-08-02`,
-the seeded day, and there is no daily pipeline running on Render. That is a
-deliberate simplification: the demo shows a fixed, known-good day. To make it
-genuinely live you would add a cron running
-`processing.scoring.daily`, which needs the processing image (1.8 GB) but not
-the rasters — daily scoring reads susceptibility from the database and only
-fetches rainfall.
+**Live data, and the one decision it forces on you.** The `climatepass-daily`
+cron re-scores all 42,914 segments at 04:30 WAT against the current day's
+rainfall, and the API serves the most recent scored date — so the deployment
+advances on its own. This is cheap: susceptibility is already in the database
+and is NOT recomputed, so the job touches no rasters and no DEM. It fetches
+rainfall and runs one SQL statement, about ten seconds.
+
+`DEMO_DATE` is therefore left UNSET on the deployment. Set it only to freeze
+the view, and understand the trade-off before you do:
+
+| | Live (`DEMO_DATE` unset) | Pinned (`DEMO_DATE=2026-08-02`) |
+|---|---|---|
+| Shows | Today, whatever the weather | A wet day: 6,489 High segments |
+| Honest? | Completely | Yes, and the date is visible in the UI |
+| Demo risk | A dry day shows **zero** High-risk roads | None |
+
+Measured on a dry day (2026-08-08: 2.8 mm forecast) the model produced no High
+band at all — which is the model behaving correctly and refusing to invent
+danger, but it is a poor thing to demonstrate a router on. Run live, and pin
+only while recording. The served date is shown on every page and at
+`/health/routing`, so a pinned view never masquerades as today.
+
+**The database seed is a starting point, not the product.** After the first
+daily run the deployment holds its own current data; the seed only exists so
+the API has something to serve before 04:30 comes around.
 
 **Region.** `frankfurt` is the closest Render region to Nigeria. Expect
 roughly 150–250 ms of latency from Abuja; the routing call itself is a few

@@ -38,11 +38,13 @@ services:
         fromDatabase:
           name: climatepass-db
           property: connectionString
-      # Pin the served scoring date to the seeded day. Without this the API
-      # serves max(valid_date), which on a freshly seeded database is the same
-      # thing — but pinning means it stays right if anyone scores another date.
+      # DELIBERATELY UNSET so the deployment is live: the API serves the most
+      # recent scored day, and climatepass-daily below advances that every
+      # morning. Set it to a date (e.g. 2026-08-02) only to freeze the view
+      # for a recording — the seeded day is a wet one, whereas a live dry day
+      # legitimately shows no High-risk roads at all.
       - key: DEMO_DATE
-        value: "2026-08-02"
+        sync: false
       - key: DEMO_MODE
         value: "false"
       - key: LOG_LEVEL
@@ -83,6 +85,36 @@ services:
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
 
+  # ------------------------------------------------------- Daily scoring
+  # This is what makes the deployment live rather than a snapshot. It re-scores
+  # all 42,914 segments against the current day's rainfall and writes a new
+  # segment_risk row set; the API picks it up because it serves the most recent
+  # scored date.
+  #
+  # Cheap: susceptibility is already in the database and does NOT need
+  # recomputing, so this touches no rasters and no DEM. It fetches rainfall and
+  # runs one SQL statement — about 10 seconds.
+  - type: cron
+    name: climatepass-daily
+    runtime: docker
+    # 03:30 UTC = 04:30 Africa/Lagos, ahead of the morning commute.
+    schedule: "30 3 * * *"
+    region: frankfurt
+    dockerfilePath: ./services/processing/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m processing.scoring.daily --city abuja
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: climatepass-db
+          property: connectionString
+      # Must be false: this job exists to reach the rainfall APIs.
+      - key: DEMO_MODE
+        value: "false"
+      - key: LOG_LEVEL
+        value: "INFO"
+
   # ------------------------------------------------- Alerts (optional)
   # Only needed if you want alerts firing on the deployment. The demo can show
   # them locally instead — see DEPLOY.md. Render cron jobs are billed per run.
@@ -105,7 +137,7 @@ services:
           name: climatepass-db
           property: connectionString
       - key: DEMO_DATE
-        value: "2026-08-02"
+        sync: false
       - key: WEB_BASE_URL
         sync: false
       - key: WEBHOOK_HMAC_SECRET
