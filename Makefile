@@ -30,8 +30,9 @@ db-init: ## Apply all migrations (P1 supplies the first one)
 db-revision: ## Autogenerate a migration: make db-revision M="add road_segments"
 	$(COMPOSE) exec api $(ALEMBIC) revision --autogenerate -m "$(M)"
 
-test: ## Run the test suite in the api container
+test: ## Run the test suite (api + core in the api container, pipelines in processing)
 	$(COMPOSE) exec api pytest -q services/api/tests packages/core/tests
+	$(COMPOSE) exec processing pytest -q services/processing/tests
 
 seed: ## Run the full ingestion pipeline for $(CITY)
 	$(COMPOSE) exec processing python -m processing.ingest.roads --city $(CITY)

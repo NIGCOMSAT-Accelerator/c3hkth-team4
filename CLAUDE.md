@@ -154,7 +154,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P0 Bootstrap | B | ✅ done — scaffold, compose, health endpoint green |
 | P1 Schema | B | ✅ done — 6 tables, SRID 4326 verified, 8 tests pass |
 | P2 Road graph | A | ✅ done — 42,914 segments, 3,772 km, municipal AOI |
-| P3 Terrain + HAND | A | ⬜ plan mode |
+| P3 Terrain + HAND | A | ✅ done — dem/slope/hand/drainage, median HAND 15.0 m |
 | P4 WOfS | A | ⬜ |
 | P5 Scoring v1 | B | ✅ done — 42,914 scored, 0 NULLs. **Tracks B and C are unblocked** |
 | P5 Scoring v2 | B | ⬜ after P3+P4 |
@@ -194,5 +194,14 @@ EO work around this:
 - The full-FCT graphml is cached, and `load_graph` reuses a wider cached graph
   for a narrower AOI rather than re-downloading. Changing AOI costs ~20s, not
   6 minutes.
+- **The reference grid exists**: `data/derived/abuja/dem.tif`, 1361 × 1186 @ 30 m,
+  EPSG:32632. `slope.tif` and `hand.tif` are verified to share its shape,
+  transform and CRS exactly. P4 must assert the same before writing WOfS.
+- pysheds 0.5 calls `np.in1d`, removed in NumPy 2.0. `processing/compat.py`
+  installs a shim that **must run before pysheds is imported** — see
+  `terrain.compute_hand`. Do not "clean up" that import ordering.
+- Hydrology runs on a 0.1° buffered DEM and only the outputs are clipped, so
+  flow routing is not truncated at the AOI edge. The buffer is sized to stay
+  inside the same two DEM tiles; widening it past ~0.15° pulls in E006.
 - Postgres is on host port **5434** (5433 was occupied on the dev machine). Inside the compose network it is `db:5432` as normal.
 - The DB image is `imresamu/postgis:16-3.4`, not `postgis/postgis` — the official one has no arm64 build and would run under emulation.
