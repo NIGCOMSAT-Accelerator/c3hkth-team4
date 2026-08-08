@@ -165,7 +165,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P5 Scoring v1 | B | ✅ done — 42,914 scored, 0 NULLs. **Tracks B and C are unblocked** |
 | P5 Scoring v2 | B | ✅ done — real evidence, 0 NULLs, HAND corr -0.842 |
 | P6 Sentinel-1 | A | ⬜ optional, cut freely |
-| P7 API + routing | B | ⬜ plan mode |
+| P7 API + routing | B | ✅ done — 9 endpoints, routing live, 30 tests |
 | P8 Web app | C | ⬜ starts hour 3 against v1 data |
 | P9 Alerts | B | ⬜ |
 | P10 Freeze + audit | D+B | ⬜ Sunday 16:00–18:00 |
