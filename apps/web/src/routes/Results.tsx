@@ -197,6 +197,8 @@ export default function Results() {
           fastest={fastest}
           safest={safest}
           landmarks={places.data?.landmarks ?? NO_LANDMARKS}
+          origin={{ ...origin, name: originName }}
+          destination={{ ...destination, name: destinationName }}
           showRisk={showRisk}
           showLabels={showLabels}
           trackUser
@@ -233,6 +235,15 @@ export default function Results() {
             <div className="label mb-1.5">Routes</div>
             <Legend colour="#cb6238" text="Fastest" />
             <Legend colour="#59a197" text="Safest" />
+            <div className="mt-2 flex items-center gap-2 text-xs text-ash">
+              <span className="grid h-4 w-4 place-items-center rounded-full border-2 border-tarmac-950 bg-bone font-data text-[9px] font-semibold text-tarmac-950">
+                A
+              </span>
+              <span className="grid h-4 w-4 place-items-center rounded-full border-2 border-bone bg-tarmac-950 font-data text-[9px] font-semibold text-bone">
+                B
+              </span>
+              <span>Start / destination</span>
+            </div>
           </div>
           <div className="mt-3 border-t border-tarmac-800 pt-2.5">
             <div className="label mb-1.5">Risk</div>

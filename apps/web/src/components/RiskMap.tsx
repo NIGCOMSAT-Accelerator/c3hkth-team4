@@ -47,6 +47,8 @@ export interface MapLayers {
   showLabels?: boolean;
   trackUser?: boolean;
   focus?: { lat: number; lon: number; zoom?: number } | null;
+  origin?: { lat: number; lon: number; name?: string } | null;
+  destination?: { lat: number; lon: number; name?: string } | null;
   onMoveEnd?: (bbox: string, zoom: number) => void;
   onClickPoint?: (lat: number, lon: number) => void;
 }
@@ -75,6 +77,8 @@ export function RiskMap({
   showLabels = true,
   trackUser = false,
   focus = null,
+  origin = null,
+  destination = null,
   onMoveEnd,
   onClickPoint,
   className = "",
@@ -83,6 +87,7 @@ export function RiskMap({
   const map = useRef<MlMap | null>(null);
   const ready = useRef(false);
   const userMarker = useRef<maplibregl.Marker | null>(null);
+  const endpointMarkers = useRef<maplibregl.Marker[]>([]);
   const watchId = useRef<number | null>(null);
 
   const [failed, setFailed] = useState(false);
@@ -115,6 +120,12 @@ export function RiskMap({
       .map(([name, p]) => ({ name, ...p }));
   }, [segments]);
 
+  const hasFitted = useRef(false);
+  const originRef = useRef(origin);
+  const destinationRef = useRef(destination);
+  originRef.current = origin;
+  destinationRef.current = destination;
+
   const anchorsRef = useRef(roadAnchors);
   anchorsRef.current = roadAnchors;
   const landmarksRef = useRef(landmarks);
@@ -141,6 +152,15 @@ export function RiskMap({
     // Collision avoidance: drop anything landing on a label already placed.
     const fits = (x: number, y: number) =>
       placed.every((p) => Math.abs(p.x - x) > 78 || Math.abs(p.y - y) > 16);
+
+    // Endpoint pins carry their own captions. Seed the collision list with
+    // them so the gazetteer does not label the same place twice — "A GWARINPA"
+    // sitting on top of "GWARINPA" reads as a rendering bug, not a map.
+    for (const end of [originRef.current, destinationRef.current]) {
+      if (!end) continue;
+      const p = instance.project([end.lon, end.lat]);
+      placed.push({ x: p.x, y: p.y });
+    }
 
     for (const lm of landmarksRef.current.slice(0, MAX_PLACE_LABELS)) {
       const p = instance.project([lm.lon, lm.lat]);
@@ -324,16 +344,38 @@ export function RiskMap({
       (instance.getSource("fastest") as maplibregl.GeoJSONSource | undefined)?.setData(toFc(fastest));
       (instance.getSource("safest") as maplibregl.GeoJSONSource | undefined)?.setData(toFc(safest));
 
-      const coords = [
-        ...(fastest?.geometry.coordinates ?? []),
-        ...(safest?.geometry.coordinates ?? []),
+      // Include the A/B markers in the fit, not just the route geometry.
+      // A route starts and ends at the nearest graph NODE, which can sit a few
+      // hundred metres from the point the user actually asked about — so
+      // fitting the line alone can push an endpoint marker off screen.
+      const coords: [number, number][] = [
+        ...((fastest?.geometry.coordinates ?? []) as [number, number][]),
+        ...((safest?.geometry.coordinates ?? []) as [number, number][]),
+        ...(originRef.current ? ([[originRef.current.lon, originRef.current.lat]] as [number, number][]) : []),
+        ...(destinationRef.current
+          ? ([[destinationRef.current.lon, destinationRef.current.lat]] as [number, number][])
+          : []),
       ];
       if (coords.length > 1) {
         const bounds = coords.reduce(
           (acc, c) => acc.extend(c as [number, number]),
           new maplibregl.LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]),
         );
-        instance.fitBounds(bounds, { padding: 70, duration: 700, maxZoom: 14 });
+        // The first fit is instant. Nobody wants to watch the map fly on page
+        // load, and an animated initial fit also means the view is wrong for
+        // 700ms — long enough for a screenshot, or a slow frame, to catch an
+        // endpoint marker still outside the viewport.
+        const reduced =
+          typeof window !== "undefined" &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        instance.fitBounds(bounds, {
+          // Asymmetric: the endpoint captions extend to the right of their pin,
+          // and the layers panel occupies the top-left.
+          padding: { top: 80, bottom: 60, left: 70, right: 120 },
+          duration: hasFitted.current && !reduced ? 700 : 0,
+          maxZoom: 14,
+        });
+        hasFitted.current = true;
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,6 +394,64 @@ export function RiskMap({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.lat, focus?.lon, focus?.zoom]);
+
+  // --------------------------------------------------- A / B endpoints
+  useEffect(() => {
+    whenReady(() => {
+      const instance = map.current;
+      if (!instance) return;
+
+      for (const marker of endpointMarkers.current) marker.remove();
+      endpointMarkers.current = [];
+
+      const build = (
+        point: { lat: number; lon: number; name?: string },
+        letter: "A" | "B",
+      ) => {
+        const el = document.createElement("div");
+        // Filled origin, hollow destination — the old cartographic convention,
+        // and it reads at a glance without relying on colour, which the route
+        // lines have already spent.
+        el.className = `cp-endpoint cp-endpoint--${letter.toLowerCase()}`;
+
+        const pin = document.createElement("span");
+        pin.className = "cp-endpoint__pin";
+        pin.textContent = letter;
+        el.appendChild(pin);
+
+        if (point.name) {
+          const name = document.createElement("span");
+          name.className = "cp-endpoint__name";
+          name.textContent = point.name;
+          el.appendChild(name);
+        }
+
+        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+          .setLngLat([point.lon, point.lat])
+          .addTo(instance);
+
+        // MapLibre stamps its own aria-label="Map marker" onto the element
+        // during construction, which tells a screen-reader user nothing.
+        // Overwrite it afterwards with something that names the place.
+        marker
+          .getElement()
+          .setAttribute(
+            "aria-label",
+            `${letter === "A" ? "Start" : "Destination"}: ${point.name ?? "selected point"}`,
+          );
+        return marker;
+      };
+
+      if (origin) endpointMarkers.current.push(build(origin, "A"));
+      if (destination) endpointMarkers.current.push(build(destination, "B"));
+    });
+
+    return () => {
+      for (const marker of endpointMarkers.current) marker.remove();
+      endpointMarkers.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origin?.lat, origin?.lon, origin?.name, destination?.lat, destination?.lon, destination?.name]);
 
   // ------------------------------------------------------ user location
   useEffect(() => {

@@ -92,6 +92,60 @@
     0 0 2px #0b0e11;
 }
 
+/* Route endpoints. Deliberately monochrome: the route lines already use
+   warm-red for fastest and teal for safest, and a third and fourth colour
+   here would turn the map into a parade. Filled A, hollow B. */
+.cp-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.cp-endpoint__pin {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  font:
+    600 11px/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 3px rgba(11, 14, 17, 0.85);
+  flex: none;
+}
+
+.cp-endpoint--a .cp-endpoint__pin {
+  background: #e9e5de;
+  color: #0b0e11;
+  border: 2px solid #0b0e11;
+}
+
+.cp-endpoint--b .cp-endpoint__pin {
+  background: #0b0e11;
+  color: #e9e5de;
+  border: 2px solid #e9e5de;
+}
+
+.cp-endpoint__name {
+  white-space: nowrap;
+  font:
+    500 10px/1 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #e9e5de;
+  text-shadow:
+    0 1px 3px #0b0e11,
+    0 0 8px #0b0e11,
+    0 0 2px #0b0e11;
+}
+
 /* Your position. A pulsing ring reads as "live" the way a static pin cannot,
    and the animation is suppressed under prefers-reduced-motion below. */
 .cp-user-dot {
