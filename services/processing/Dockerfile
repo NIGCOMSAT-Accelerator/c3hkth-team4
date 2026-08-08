@@ -22,6 +22,18 @@ COPY services/processing/pyproject.toml /app/services/processing/pyproject.toml
 COPY services/processing/processing/__init__.py /app/services/processing/processing/__init__.py
 RUN pip install -e /app/services/processing && pip install pytest
 
+# Runtime shared libraries the wheels link against but python:3.11-slim omits:
+#   libexpat1 — rasterio's bundled GDAL 3.10 needs it for its XML drivers;
+#               without it `import rasterio` dies on libexpat.so.1
+#   libgomp1  — OpenMP runtime for scikit-learn and numba (pysheds)
+#
+# DELIBERATELY placed AFTER the pip layers. Moving this up to the apt block at
+# the top invalidates every pip layer below it, and re-downloading this
+# dependency set took 45 minutes on the build machine. Leave it here.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY packages/core /app/packages/core
 COPY services/processing /app/services/processing
 

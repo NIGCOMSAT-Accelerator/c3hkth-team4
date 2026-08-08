@@ -32,13 +32,19 @@ def session():
         connection.close()
 
 
+# A slug of its own: the real "abuja" row exists as soon as the ingestion
+# pipeline has run, and cities.slug is UNIQUE. Geometry still comes from
+# cities.yaml, so this remains a test of the real configuration.
+TEST_SLUG = "abuja-pytest"
+
+
 @pytest.fixture()
 def abuja(session: Session) -> City:
     """Insert Abuja straight from cities.yaml — config and schema agree or fail."""
     cfg = get_city("abuja")
     min_lon, min_lat, max_lon, max_lat = cfg.bbox
     city = City(
-        slug="abuja",
+        slug=TEST_SLUG,
         name=cfg.name,
         bbox=from_shape(box(min_lon, min_lat, max_lon, max_lat), srid=4326),
         centroid=from_shape(Point(*cfg.centroid), srid=4326),
@@ -52,7 +58,7 @@ def test_city_roundtrips_with_srid_4326(session: Session, abuja: City):
     """The P1 acceptance criterion, stated directly."""
     stored = session.get(City, abuja.id)
     assert stored is not None
-    assert stored.slug == "abuja"
+    assert stored.slug == TEST_SLUG
 
     bbox_srid, centroid_srid = session.execute(
         select(func.ST_SRID(City.bbox), func.ST_SRID(City.centroid)).where(
@@ -104,9 +110,14 @@ def test_road_segment_stores_linestring_and_cascades(session: Session, abuja: Ci
     assert 50 < metres < 200, f"implausible segment length {metres}m"
 
     # Deleting a city must take its segments with it, or reloads leave orphans.
+    # Scoped to this city: the real Abuja network lives in the same table.
+    city_id = abuja.id
     session.delete(abuja)
     session.flush()
-    assert session.scalar(select(func.count()).select_from(RoadSegment)) == 0
+    remaining = session.scalar(
+        select(func.count()).select_from(RoadSegment).where(RoadSegment.city_id == city_id)
+    )
+    assert remaining == 0, "city delete left orphaned road segments"
 
 
 def test_segment_risk_is_keyed_by_segment_and_date(session: Session, abuja: City):

@@ -152,11 +152,11 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | Prompt | Track | Status |
 |---|---|---|
 | P0 Bootstrap | B | ✅ done — scaffold, compose, health endpoint green |
-| P1 Schema | B | ⬜ next |
-| P2 Road graph | A | ⬜ can start now, parallel with P1 |
+| P1 Schema | B | ✅ done — 6 tables, SRID 4326 verified, 8 tests pass |
+| P2 Road graph | A | ✅ done — 42,914 segments, 3,772 km, municipal AOI |
 | P3 Terrain + HAND | A | ⬜ plan mode |
 | P4 WOfS | A | ⬜ |
-| P5 Scoring v1 | B | ⬜ **run the moment P2 lands — unblocks C** |
+| P5 Scoring v1 | B | ✅ done — 42,914 scored, 0 NULLs. **Tracks B and C are unblocked** |
 | P5 Scoring v2 | B | ⬜ after P3+P4 |
 | P6 Sentinel-1 | A | ⬜ optional, cut freely |
 | P7 API + routing | B | ⬜ plan mode |
@@ -164,10 +164,35 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P9 Alerts | B | ⬜ |
 | P10 Freeze + audit | D+B | ⬜ Sunday 16:00–18:00 |
 
+**Bandwidth is the binding constraint on this machine, not compute.**
+Measured: PyPI 0.09–0.90 MB/s (highly variable), AWS S3 ~0.08 MB/s. The
+processing image took **45 minutes to build**, entirely download-bound. Plan
+EO work around this:
+
+- Never invalidate the pip layers in `services/processing/Dockerfile`. The
+  `libexpat1`/`libgomp1` apt step sits *after* the pip installs for exactly
+  this reason — read the comment there before editing.
+- `data/cache/` is not an optimisation here, it is the schedule. Anything
+  downloaded once must never be downloaded twice.
+- Copernicus DEM over plain HTTPS is confirmed reachable and unauthenticated;
+  tile naming `Copernicus_DSM_COG_10_N09_00_E007_00_DEM` is verified correct.
+- P6 (Sentinel-1) pulls scene-sized rasters. At ~0.08 MB/s that is hours.
+  It is already first on the fallback ladder — treat cutting it as the
+  default, not the exception.
+
 **Notes for the next session**
 
 - Alembic is scaffolded but has **zero revisions**. `make db-init` is a no-op until P1 creates the first one.
 - `packages/core/core/models.py` is an empty stub exposing `Base`. P1 fills it.
-- `cities.yaml` carries two AOI variants: `full` (entire FCT) and `municipal`. P2's scope guard trips at 80k segments — switch to `municipal` via config, not code.
+- **The AOI is decided: `municipal` + arterial classes only.** Always pass
+  `--variant municipal` to the pipelines. Measured on the real graph:
+  full FCT = 401,659 segments (5× over budget); municipal with residential
+  streets = 211,997 (still 2.6× over); municipal arterial-only = **42,914**.
+  Residential streets are 80% of OSM's network here, so excluding them — not
+  shrinking the AOI — is what actually made the budget. `--include-residential`
+  exists if that is ever revisited, but raise `--max-segments` with it.
+- The full-FCT graphml is cached, and `load_graph` reuses a wider cached graph
+  for a narrower AOI rather than re-downloading. Changing AOI costs ~20s, not
+  6 minutes.
 - Postgres is on host port **5434** (5433 was occupied on the dev machine). Inside the compose network it is `db:5432` as normal.
 - The DB image is `imresamu/postgis:16-3.4`, not `postgis/postgis` — the official one has no arm64 build and would run under emulation.
