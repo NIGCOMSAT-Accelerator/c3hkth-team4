@@ -1,4 +1,4 @@
-# ClimatePass AI
+# ClimatePass AI (MVP BLUEPRINT)
 
 **Road-network flood exposure for Abuja FCT.** Every arterial road segment is scored daily from satellite terrain, four decades of satellite water observations and rainfall. The API returns a risk score, a safer alternative route, and threshold alerts on corridors you watch.
 
