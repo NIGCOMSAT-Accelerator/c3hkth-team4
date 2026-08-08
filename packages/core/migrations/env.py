@@ -5,6 +5,7 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
+from geoalchemy2 import alembic_helpers
 from sqlalchemy import engine_from_config, pool
 
 from core.config import settings
@@ -21,13 +22,30 @@ target_metadata = Base.metadata
 
 
 def include_object(obj, name, type_, reflected, compare_to) -> bool:
-    """Skip PostGIS's own bookkeeping tables and indexes."""
-    if type_ == "table" and name in {"spatial_ref_sys", "geography_columns", "geometry_columns"}:
-        return False
-    # GeoAlchemy2 creates GIST indexes itself; autogenerate must not fight it.
-    if type_ == "index" and name is not None and name.startswith("idx_") and reflected:
-        return False
-    return True
+    """Manage only the objects this project defines.
+
+    The PostGIS image enables postgis_tiger_geocoder and postgis_topology,
+    which between them create ~40 tables (addrfeat, edges, tract, zip_lookup,
+    place, zcta5, ...) plus spatial_ref_sys. A naive filter lets autogenerate
+    read those as "removed" and emit DROP TABLE for every one — 69 destructive
+    statements in what should be a create-only migration.
+
+    Allow-list semantics, not deny-list: anything absent from Base.metadata is
+    not ours and is left strictly alone.
+    """
+    if type_ == "table":
+        return name in target_metadata.tables
+
+    if type_ == "index" and reflected:
+        parent = getattr(obj, "table", None)
+        if parent is not None and parent.name not in target_metadata.tables:
+            return False
+
+    # GeoAlchemy2 creates the GIST index for a Geometry column as part of
+    # CREATE TABLE. Its helper suppresses the duplicate explicit create_index
+    # that autogenerate would otherwise emit — without this, the migration
+    # dies on "relation idx_cities_bbox already exists".
+    return alembic_helpers.include_object(obj, name, type_, reflected, compare_to)
 
 
 def run_migrations_offline() -> None:
@@ -54,6 +72,10 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             include_object=include_object,
             compare_type=True,
+            # Renders Geometry(...) correctly in generated migrations and adds
+            # the geoalchemy2 import; without these the file is not runnable.
+            render_item=alembic_helpers.render_item,
+            process_revision_directives=alembic_helpers.writer,
         )
         with context.begin_transaction():
             context.run_migrations()
