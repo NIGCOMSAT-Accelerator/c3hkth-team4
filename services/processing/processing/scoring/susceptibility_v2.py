@@ -28,6 +28,9 @@ tuned to a target, and P6 tests them against satellite-observed inundation.
       pure observation — no model, no interpolation. Ground that has been wet
       repeatedly will be wet again. MAXIMUM over the segment, for the same
       reason as HAND's minimum: the worst pixel governs passability.
+      Sampled over a 200 m buffer rather than 15 m, because it measures the
+      floodplain the road sits in, not the road surface — which is dry land by
+      construction. See WOFS_BUFFER_M for the measurements behind that choice.
 
   slope_term = 1 - pctile(slope_mean)                   weight 0.15
       Flat ground sheds water slowly and ponds. Steep ground drains. Mean is
@@ -83,7 +86,24 @@ WEIGHTS: dict[str, float] = {
     "crossing": 0.05,
 }
 
-SEGMENT_BUFFER_M = 15.0  # roads are ~10-20 m wide; sample the carriageway, not the field
+# Terrain features describe the road itself: roads are ~10-20 m wide, so a 15 m
+# buffer samples the carriageway and its shoulders.
+SEGMENT_BUFFER_M = 15.0
+
+# WOfS is sampled wider, and deliberately. It answers a different question from
+# HAND and slope: not "what is this road surface like" but "is this road inside
+# ground that regularly holds water". A road surface is dry land by
+# construction — that is why a road is there — so a 15 m buffer returns ~0 for
+# 99.85% of segments and the term contributes a constant offset instead of
+# discrimination (measured: correlation 0.074 with the final index).
+#
+# At 200 m the term becomes floodplain context: a road on a levee 50 m from a
+# channel that floods most years is genuinely exposed even though its own
+# pixels never read as water. Measured across the network, widening 15 m -> 200 m
+# lifts segments with wofs_freq_max > 0.05 from 0.1% to 2.4%, and the 99th
+# percentile from 0.008 to 0.314. Weights are unchanged.
+WOFS_BUFFER_M = 200.0
+
 NODATA = -9999.0
 
 
@@ -111,18 +131,22 @@ def attach_raster_features(gdf: gpd.GeoDataFrame, derived) -> gpd.GeoDataFrame:
     All five rasters share one grid (asserted in P3/P4), so each is read once
     into memory and reused across 42k polygons rather than reopened per zone.
     """
-    buffers = gdf.geometry.buffer(SEGMENT_BUFFER_M)
-
     wanted = [
-        ("dem.tif", "elev_mean", "mean"),
-        ("slope.tif", "slope_mean", "mean"),
-        ("hand.tif", "hand_min", "min"),
-        ("hand.tif", "hand_mean", "mean"),
-        ("wofs_freq.tif", "wofs_freq_max", "max"),
+        ("dem.tif", "elev_mean", "mean", SEGMENT_BUFFER_M),
+        ("slope.tif", "slope_mean", "mean", SEGMENT_BUFFER_M),
+        ("hand.tif", "hand_min", "min", SEGMENT_BUFFER_M),
+        ("hand.tif", "hand_mean", "mean", SEGMENT_BUFFER_M),
+        # Wider on purpose — see WOFS_BUFFER_M.
+        ("wofs_freq.tif", "wofs_freq_max", "max", WOFS_BUFFER_M),
     ]
 
+    # Buffering 42k geometries is not free; build each distinct radius once.
+    buffer_cache: dict[float, gpd.GeoSeries] = {}
     cache: dict[str, tuple[np.ndarray, object]] = {}
-    for filename, column, stat in wanted:
+    for filename, column, stat, radius in wanted:
+        if radius not in buffer_cache:
+            buffer_cache[radius] = gdf.geometry.buffer(radius)
+        buffers = buffer_cache[radius]
         if filename not in cache:
             with rasterio.open(derived / filename) as src:
                 array = src.read(1).astype("float32")
@@ -141,7 +165,13 @@ def attach_raster_features(gdf: gpd.GeoDataFrame, derived) -> gpd.GeoDataFrame:
         )
         gdf[column] = [s[stat] for s in stats]
         missing = gdf[column].isna().sum()
-        log.info("zonal_stats_done", column=column, source=filename, missing=int(missing))
+        log.info(
+            "zonal_stats_done",
+            column=column,
+            source=filename,
+            buffer_m=radius,
+            missing=int(missing),
+        )
 
     return gdf
 

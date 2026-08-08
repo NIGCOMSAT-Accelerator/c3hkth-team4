@@ -163,7 +163,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P3 Terrain + HAND | A | ✅ done — dem/slope/hand/drainage, median HAND 15.0 m |
 | P4 WOfS | A | ✅ done — grid matches dem.tif, 0.52% permanent water |
 | P5 Scoring v1 | B | ✅ done — 42,914 scored, 0 NULLs. **Tracks B and C are unblocked** |
-| P5 Scoring v2 | B | ⬜ after P3+P4 |
+| P5 Scoring v2 | B | ✅ done — real evidence, 0 NULLs, HAND corr -0.842 |
 | P6 Sentinel-1 | A | ⬜ optional, cut freely |
 | P7 API + routing | B | ⬜ plan mode |
 | P8 Web app | C | ⬜ starts hour 3 against v1 data |
