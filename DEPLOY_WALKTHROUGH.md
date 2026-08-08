@@ -100,46 +100,43 @@ days since the seed carries real scored data.
 
 ---
 
-## Step 2 — turn on PostGIS
+## Steps 2 & 3 — seed the database
 
-Our data is geographic, so the database needs the PostGIS extension before it
-will accept the seed.
+**Nothing does this for you.** Render creates an empty database; it knows
+nothing about your data. Until you run this, the API returns errors on every
+endpoint that touches Postgres and the alerts cron fails on every run. This is
+the single most common reason a deployment looks finished but does not work.
 
 1. In Render, click **climatepass-db**.
-2. Scroll to **Connections** and copy the **External Database URL**. It looks
-   like `postgres://climatepass:xxxx@dpg-xxxx.frankfurt-postgres.render.com/climatepass`.
+2. Under **Connections**, copy the **External Database URL** — it looks like
+   `postgres://climatepass:xxxx@dpg-xxxx.frankfurt-postgres.render.com/climatepass`.
 
-Back in your terminal:
-
-```bash
-export DB='postgres://...paste the whole thing...'
-
-# You may not have psql installed; borrow the one already running in Docker.
-docker compose exec -T db psql "$DB" -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
-docker compose exec -T db psql "$DB" -c 'SELECT PostGIS_Version();'
-```
-
-The second command should print a version like `3.4 USE_GEOS=1 ...`. If it
-does, move on.
-
----
-
-## Step 3 — load the data
+Then one command:
 
 ```bash
-gunzip -c deploy/seed.sql.gz | docker compose exec -T db psql "$DB"
+make seed-remote DB='postgres://...paste the external URL...'
 ```
 
-It prints a lot of `COPY 42914`-style lines. Then check it landed:
+It enables PostGIS, restores the dump, and prints what landed. You do not need
+`psql` installed — it borrows the one in the compose stack.
 
-```bash
-docker compose exec -T db psql "$DB" -tAc \
-  "SELECT 'segments '||count(*) FROM road_segments
-   UNION ALL SELECT 'risk rows '||count(*) FROM segment_risk;"
+**How long?** The database work itself is about 2 seconds. What takes time is
+pushing 48 MB of SQL over your connection, so expect **2–10 minutes** depending
+on your upload speed. There is no progress bar during the restore; it is not
+stuck.
+
+Expected output:
+
+```
+        segments   42914
+        risk rows  85828
+        watches    3
+        dates      2026-08-02, 2026-08-08
 ```
 
-Expect **segments 42914** and **risk rows 85828** (two scored days). If you get zero rows, the
-seed did not apply — re-run the gunzip line and read the error.
+**Do not run the ingestion pipeline in production.** It would re-download the
+Copernicus DEM and recompute HAND on a small instance for no benefit — the
+derived data is a deterministic function of inputs you already processed.
 
 ---
 

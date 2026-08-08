@@ -71,6 +71,10 @@ dump-db: ## Dump the database to deploy/seed.sql.gz (portable; seed production f
 	@echo "wrote deploy/seed.sql.gz ($$(du -h deploy/seed.sql.gz | cut -f1))"
 	@echo "restore needs PostGIS present first: CREATE EXTENSION IF NOT EXISTS postgis;"
 
+seed-remote: ## Seed a managed Postgres: make seed-remote DB='postgres://...'
+	@test -n "$(DB)" || (echo "usage: make seed-remote DB='postgres://...'" && exit 1)
+	./scripts/seed-remote.sh "$(DB)"
+
 restore-db: ## Restore deploy/seed.sql.gz into the running database
 	@test -f deploy/seed.sql.gz || (echo "deploy/seed.sql.gz not found — run make dump-db first" && exit 1)
 	gunzip -c deploy/seed.sql.gz | $(COMPOSE) exec -T db psql -U climatepass -d climatepass
