@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import ProgrammingError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from core.logging import get_logger
@@ -59,6 +60,39 @@ def register_error_handlers(app: FastAPI) -> None:
                 "not_found" if exc.status_code == 404 else "http_error",
                 str(exc.detail),
                 None,
+            ),
+        )
+
+    @app.exception_handler(ProgrammingError)
+    async def _schema_missing(request: Request, exc: ProgrammingError) -> JSONResponse:
+        """A database that was never migrated is a deployment step, not a crash.
+
+        Returning an opaque 500 for this sends whoever deployed it hunting
+        through logs for what is really a one-line answer: the schema is not
+        there yet. Every database-backed endpoint fails this way at once on a
+        fresh deployment, so it is worth naming precisely.
+        """
+        message = str(exc.orig) if exc.orig else str(exc)
+        if "does not exist" in message and "relation" in message:
+            log.error("schema_missing", path=str(request.url.path))
+            return JSONResponse(
+                status_code=503,
+                content=error_body(
+                    "schema_missing",
+                    "The database has no schema yet, so there is nothing to serve. "
+                    "Apply it: create the PostGIS extension, then restore the seed "
+                    "(see DEPLOY_WALKTHROUGH.md steps 2 and 3). Endpoints that do "
+                    "not touch the database, such as /v1/geocode, keep working.",
+                    {"detail": message[:200]},
+                ),
+            )
+        log.error("database_error", path=str(request.url.path), error=message[:300])
+        return JSONResponse(
+            status_code=500,
+            content=error_body(
+                "database_error",
+                "A database query failed. Check the API logs for the statement.",
+                {"path": str(request.url.path)},
             ),
         )
 
