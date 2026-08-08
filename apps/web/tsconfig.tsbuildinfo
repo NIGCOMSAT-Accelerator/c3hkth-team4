@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/components/placeinput.tsx","./src/components/riskgauge.tsx","./src/components/riskmap.tsx","./src/lib/risk.ts","./src/routes/alerts.tsx","./src/routes/home.tsx","./src/routes/results.tsx"],"version":"5.9.3"}

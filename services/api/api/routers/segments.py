@@ -30,6 +30,14 @@ MAX_FEATURES = 5000
 def segments(
     bbox: str = Query(..., description="min_lon,min_lat,max_lon,max_lat", examples=["7.45,9.03,7.53,9.09"]),
     min_risk: float = Query(0, ge=0, le=100),
+    classes: str | None = Query(
+        None,
+        description=(
+            "Comma-separated highway classes, e.g. motorway,trunk,primary. "
+            "Omit for all. Clients should narrow this as they zoom out."
+        ),
+        examples=["motorway,trunk,primary"],
+    ),
     date: dt.date | None = Query(None, description="Defaults to the most recent scored date."),
     session: Session = Depends(get_session),
 ) -> dict:
@@ -51,6 +59,13 @@ def segments(
             503,
         )
 
+    wanted = [c.strip() for c in classes.split(",") if c.strip()] if classes else None
+
+    # Order by road importance, NOT by risk. Ordering by risk and then capping
+    # returns the 5000 highest-risk segments scattered across the whole city,
+    # which draws as confetti rather than a road network. Importance order
+    # degrades gracefully: the cap removes the least significant streets first,
+    # exactly as a paper map drops minor roads at small scale.
     rows = session.execute(
         text(
             "SELECT s.id, s.name, s.highway_class, sr.risk_score, sr.risk_band,"
@@ -58,11 +73,20 @@ def segments(
             " FROM road_segments s JOIN segment_risk sr ON sr.segment_id = s.id"
             " WHERE sr.valid_date = :d AND sr.risk_score >= :min_risk"
             "   AND s.geom && ST_MakeEnvelope(:x1,:y1,:x2,:y2,4326)"
-            " ORDER BY sr.risk_score DESC LIMIT :lim"
+            "   AND (:no_class OR s.highway_class = ANY(:classes))"
+            " ORDER BY CASE s.highway_class"
+            "   WHEN 'motorway' THEN 1 WHEN 'trunk' THEN 2 WHEN 'primary' THEN 3"
+            "   WHEN 'motorway_link' THEN 4 WHEN 'trunk_link' THEN 5"
+            "   WHEN 'secondary' THEN 6 WHEN 'primary_link' THEN 7"
+            "   WHEN 'tertiary' THEN 8 WHEN 'secondary_link' THEN 9"
+            "   WHEN 'tertiary_link' THEN 10 ELSE 11 END,"
+            "  sr.risk_score DESC"
+            " LIMIT :lim"
         ),
         {
             "d": target, "min_risk": min_risk, "lim": MAX_FEATURES + 1,
             "x1": min_lon, "y1": min_lat, "x2": max_lon, "y2": max_lat,
+            "no_class": wanted is None, "classes": wanted or [],
         },
     ).fetchall()
 

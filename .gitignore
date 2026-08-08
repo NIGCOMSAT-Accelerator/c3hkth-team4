@@ -23,3 +23,6 @@ data/outbox/*
 !data/cache/.gitkeep
 !data/derived/.gitkeep
 !data/outbox/.gitkeep
+
+# Screenshot scratch copied into the cache dir for container-side inspection
+data/cache/*.png

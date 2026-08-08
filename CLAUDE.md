@@ -166,7 +166,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P5 Scoring v2 | B | ✅ done — real evidence, 0 NULLs, HAND corr -0.842 |
 | P6 Sentinel-1 | A | ⬜ optional, cut freely |
 | P7 API + routing | B | ✅ done — 9 endpoints, routing live, 30 tests |
-| P8 Web app | C | ⬜ starts hour 3 against v1 data |
+| P8 Web app | C | ✅ done — 3 routes, live against real API |
 | P9 Alerts | B | ✅ done — worker live, alert fired, .eml written |
 | P10 Freeze + audit | D+B | ⬜ Sunday 16:00–18:00 |
 

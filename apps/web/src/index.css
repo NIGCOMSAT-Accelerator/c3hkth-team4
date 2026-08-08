@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* Risk ramp. Reads as a hydrology chart: still water through silt to
+       exposed laterite. Not a traffic light — the steps are perceptually
+       ordered so a colour-blind viewer still sees a monotonic ramp in value. */
+    --risk-low: #3e7c76;
+    --risk-mid: #a9832f;
+    --risk-high: #b04a2c;
+    --risk-severe: #7c2d1c;
+    --route-fastest: #cb6238;
+    --route-safest: #59a197;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-tarmac-950 text-bone font-ui antialiased;
+    /* A faint survey grid. Present enough to read as a chart, quiet enough
+       to never compete with the data drawn on top of it. */
+    background-image:
+      linear-gradient(rgba(91, 107, 122, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91, 107, 122, 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  /* Focus must be visible for keyboard users on every interactive element. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-signal ring-offset-2 ring-offset-tarmac-950;
+  }
+
+  ::selection {
+    @apply bg-laterite-500/40 text-bone;
+  }
+
+  /* Numbers never dance as values update. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer components {
+  .label {
+    @apply font-data text-[10px] uppercase tracking-widest text-silt;
+  }
+
+  .panel {
+    @apply rounded border border-tarmac-700 bg-tarmac-900/80 backdrop-blur-sm;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded border px-4 py-2.5
+           font-data text-xs uppercase tracking-widest transition-colors duration-150
+           disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn border-signal/60 bg-signal/15 text-signal hover:bg-signal/25;
+  }
+
+  .btn-ghost {
+    @apply btn border-tarmac-600 text-ash hover:border-silt hover:text-bone;
+  }
+
+  .field {
+    @apply w-full rounded border border-tarmac-700 bg-tarmac-950/70 px-3 py-2.5
+           font-ui text-sm text-bone placeholder:text-silt/70
+           focus:border-signal/60 focus:outline-none;
+  }
+
+  /* Skeletons, not spinners: the page keeps its shape while data lands. */
+  .skeleton {
+    @apply animate-pulse rounded bg-tarmac-800;
+  }
+}
+
+/* MapLibre's default chrome does not belong on an instrument panel. */
+.maplibregl-ctrl-attrib {
+  @apply !bg-tarmac-950/80 !text-[10px] !text-silt;
+}
+.maplibregl-ctrl-attrib a {
+  @apply !text-silt;
+}
+.maplibregl-canvas:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
