@@ -41,7 +41,13 @@ Geo: geopandas, shapely, rasterio, rioxarray, odc-stac, pystac-client, osmnx, ne
 ## Hard rules
 
 1. **Every external fetch caches to `data/cache/`.** No exceptions. Re-runs must work with the network off — this is what makes DEMO_MODE possible, and the demo will be given on conference wifi.
-2. **Never hardcode STAC collection ids or band names from memory.** Query `/collections`, log what is actually available, match by id/title, and fail with the list if nothing matches.
+2. **Never hardcode STAC collection ids or band names from memory.** Discover, log what is actually available, match by id/title, and fail with the list if nothing matches.
+   Note for DE Africa: `explorer.digitalearth.africa/stac/collections` serves
+   **HTML** regardless of the Accept header, so `pystac_client.get_collections()`
+   cannot parse it. `/stac` (root) and `/stac/search` return JSON. `wofs.py`
+   falls back to the root catalog's `child` links — reuse that helper rather
+   than rediscovering this. Verified live: collection `wofs_ls_summary_alltime`,
+   band `frequency`.
 3. **`data/derived/<city>/dem.tif` is the reference grid.** Every other raster must match its shape, transform and CRS exactly. Assert it downstream.
 4. **Metric math in EPSG:32632. Geometry stored as EPSG:4326.** Always.
 5. **Never leave NULL susceptibility.** Segments without raster coverage get the city median. NULLs crash the router.
@@ -155,7 +161,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P1 Schema | B | ✅ done — 6 tables, SRID 4326 verified, 8 tests pass |
 | P2 Road graph | A | ✅ done — 42,914 segments, 3,772 km, municipal AOI |
 | P3 Terrain + HAND | A | ✅ done — dem/slope/hand/drainage, median HAND 15.0 m |
-| P4 WOfS | A | ⬜ |
+| P4 WOfS | A | ✅ done — grid matches dem.tif, 0.52% permanent water |
 | P5 Scoring v1 | B | ✅ done — 42,914 scored, 0 NULLs. **Tracks B and C are unblocked** |
 | P5 Scoring v2 | B | ⬜ after P3+P4 |
 | P6 Sentinel-1 | A | ⬜ optional, cut freely |
