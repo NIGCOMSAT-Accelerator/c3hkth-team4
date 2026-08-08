@@ -12,6 +12,12 @@ databases:
   - name: climatepass-db
     databaseName: climatepass
     user: climatepass
+    # MUST match the services' region. Render's internal database hostname
+    # (dpg-xxxx-a, no domain) resolves only inside one region, so a database
+    # left in the default region while the services sit in another fails with
+    # "failed to resolve host ... Name or service not known" on every query —
+    # which reads like a missing schema and is not.
+    region: frankfurt
     # `free` is fine for the hackathon but Render DELETES free databases after
     # 30 days. Move to `basic-256mb` if this needs to outlive the event.
     plan: free
@@ -66,6 +72,7 @@ services:
   # ---------------------------------------------------------------- Web
   - type: web
     name: climatepass-web
+    # Static sites are served from a CDN, so region is not applicable here.
     runtime: static
     # rootDir makes apps/web the service root, so the build runs there and the
     # publish path is resolved from there too. The previous form —

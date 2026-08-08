@@ -236,6 +236,26 @@ instead. Set them, then **Manual Deploy → Clear build cache & deploy**.
 > A blueprint is applied when resources are created; afterwards you either
 > edit the service in the dashboard, or go to the Blueprint and re-sync.
 
+**Every database endpoint 500s and /health/db says "failed to resolve host
+dpg-… Name or service not known".** The database and the services are in
+different regions. Render's internal database hostname resolves only within
+one region, so nothing can reach it — and the symptom looks like a missing
+schema, which it is not.
+
+Two ways out, and the first takes a minute:
+
+1. **Use the external URL.** On `climatepass-api` (and both crons) →
+   Environment, replace `DATABASE_URL` with the **External** Database URL from
+   the database page — the long one ending `.frankfurt-postgres.render.com`.
+   It resolves publicly, so region no longer matters. Costs a little latency
+   per query.
+2. **Put them in the same region.** Cleaner and faster, but a database's region
+   cannot be changed after creation: delete `climatepass-db`, re-create it in
+   the same region as the services, and seed it again.
+
+`render.yaml` now pins the database to `frankfurt` so a fresh Blueprint does
+not repeat this.
+
 **The map shows no roads.** Check `/health/routing` on your API URL — if
 `"loaded": false`, the routing graph is missing from the image. Same fix as the
 build failure above.
