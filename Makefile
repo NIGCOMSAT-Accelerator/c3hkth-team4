@@ -33,6 +33,7 @@ db-revision: ## Autogenerate a migration: make db-revision M="add road_segments"
 test: ## Run the test suite (api + core in the api container, pipelines in processing)
 	$(COMPOSE) exec api pytest -q services/api/tests packages/core/tests
 	$(COMPOSE) exec processing pytest -q services/processing/tests
+	$(COMPOSE) exec alerts pytest -q services/alerts/tests
 
 seed: ## Run the full ingestion pipeline for $(CITY)
 	$(COMPOSE) exec processing python -m processing.ingest.roads --city $(CITY)

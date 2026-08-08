@@ -167,7 +167,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P6 Sentinel-1 | A | ⬜ optional, cut freely |
 | P7 API + routing | B | ✅ done — 9 endpoints, routing live, 30 tests |
 | P8 Web app | C | ⬜ starts hour 3 against v1 data |
-| P9 Alerts | B | ⬜ |
+| P9 Alerts | B | ✅ done — worker live, alert fired, .eml written |
 | P10 Freeze + audit | D+B | ⬜ Sunday 16:00–18:00 |
 
 **Bandwidth is the binding constraint on this machine, not compute.**

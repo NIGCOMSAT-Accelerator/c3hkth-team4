@@ -23,5 +23,7 @@ RUN pip install -e /app/services/alerts && pip install pytest
 COPY packages/core /app/packages/core
 COPY services/alerts /app/services/alerts
 
-# P9 replaces this with the APScheduler worker (alerts.worker).
-CMD ["tail", "-f", "/dev/null"]
+# Two jobs: daily scoring at 04:30 Africa/Lagos, subscription sweep every 30 min.
+# Fire on demand with:
+#   docker compose exec alerts python -m alerts.evaluate --now --force
+CMD ["python", "-m", "alerts.worker"]
