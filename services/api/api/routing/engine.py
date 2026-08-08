@@ -52,7 +52,11 @@ def safety_cost(travel_time: float, risk: float, lam: float) -> float:
     """
     normalised = max(0.0, min(risk, 100.0)) / 100.0
     cost = travel_time * (1.0 + lam * normalised**2)
-    if risk >= SEVERE_RISK_THRESHOLD:
+    # Gated on lam so that lam=0 means exactly what it says — pure fastest
+    # route, risk ignored. Applying the severe penalty unconditionally made
+    # lam=0 quietly diverge from the fastest route, which is a contradiction
+    # a judge sliding the control to zero on stage would spot immediately.
+    if lam > 0 and risk >= SEVERE_RISK_THRESHOLD:
         cost *= SEVERE_RISK_MULTIPLIER
     return cost
 

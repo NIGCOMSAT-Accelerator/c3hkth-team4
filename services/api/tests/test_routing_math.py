@@ -17,9 +17,15 @@ from api.routing.engine import (
 
 
 def test_lambda_zero_ignores_risk_entirely():
-    """lambda=0 must reproduce the fastest route exactly."""
+    """lambda=0 must reproduce the fastest route exactly.
+
+    Including for severe edges: the severe multiplier is gated on lambda, or
+    lambda=0 quietly diverges from the fastest route.
+    """
     assert safety_cost(100.0, 0.0, 0.0) == 100.0
     assert safety_cost(100.0, 80.0, 0.0) == 100.0
+    assert safety_cost(100.0, 99.0, 0.0) == 100.0
+    assert safety_cost(100.0, SEVERE_RISK_THRESHOLD, 0.0) == 100.0
 
 
 def test_penalty_is_quadratic_not_linear():

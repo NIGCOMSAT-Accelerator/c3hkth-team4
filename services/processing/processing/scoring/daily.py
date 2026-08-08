@@ -168,8 +168,40 @@ def open_meteo(lon: float, lat: float, timezone: str) -> tuple[dict[dt.date, flo
     return daily, float(next_24h)
 
 
-def resolve_rainfall(cfg, valid_date: dt.date) -> dict:
-    """Merge CHIRPS with Open-Meteo and report exactly where each day came from."""
+def resolve_rainfall(
+    cfg,
+    valid_date: dt.date,
+    scenario_rain_7d: float | None = None,
+    scenario_rain_24h: float | None = None,
+) -> dict:
+    """Merge CHIRPS with Open-Meteo and report exactly where each day came from.
+
+    Scenario overrides answer a question emergency planners actually ask —
+    "what happens to the network if 45 mm falls tomorrow?" — and the product
+    exists for exactly that day, not for a dry one. An override is therefore a
+    feature, not a fake, but ONLY because every surface that carries the number
+    also carries the word SCENARIO: the provenance string, the per-segment
+    contributions JSONB, and /v1/meta/model. Never let a hypothetical figure
+    reach a user looking like an observation.
+    """
+    if scenario_rain_7d is not None or scenario_rain_24h is not None:
+        rain_7d = scenario_rain_7d if scenario_rain_7d is not None else 0.0
+        rain_24h = scenario_rain_24h if scenario_rain_24h is not None else 0.0
+        provenance = (
+            f"SCENARIO (hypothetical, not observed): "
+            f"rain_7d={rain_7d:.0f}mm, rain_24h_forecast={rain_24h:.0f}mm"
+        )
+        log.warning("SCENARIO_RAINFALL", provenance=provenance)
+        return {
+            "rain_7d_mm": float(rain_7d),
+            "rain_24h_forecast_mm": float(rain_24h),
+            "provenance": provenance,
+            "chirps_days": 0,
+            "open_meteo_days": 0,
+            "chirps_latency_days": None,
+            "scenario": True,
+        }
+
     lon, lat = cfg.centroid
     start = valid_date - dt.timedelta(days=ANTECEDENT_DAYS - 1)
 
@@ -202,6 +234,7 @@ def resolve_rainfall(cfg, valid_date: dt.date) -> dict:
         "chirps_days": from_chirps,
         "open_meteo_days": filled,
         "chirps_latency_days": latency,
+        "scenario": False,
     }
 
 
@@ -254,7 +287,8 @@ SELECT
         'rain_24h_forecast_mm', round(CAST(:rain_24h AS numeric), 1),
         -- jsonb_build_object gives Postgres nothing to infer a type from, so
         -- an untyped bind here fails with "could not determine data type".
-        'provenance', CAST(:provenance AS text)
+        'provenance', CAST(:provenance AS text),
+        'scenario', CAST(:scenario AS boolean)
     )
 FROM scored
 ON CONFLICT (segment_id, valid_date) DO UPDATE SET
@@ -266,7 +300,12 @@ ON CONFLICT (segment_id, valid_date) DO UPDATE SET
 """
 
 
-def run(city_slug: str, valid_date: dt.date | None) -> int:
+def run(
+    city_slug: str,
+    valid_date: dt.date | None,
+    scenario_rain_7d: float | None = None,
+    scenario_rain_24h: float | None = None,
+) -> int:
     cfg = get_city(city_slug)
     valid_date = valid_date or dt.date.today()
 
@@ -276,7 +315,9 @@ def run(city_slug: str, valid_date: dt.date | None) -> int:
         raise SystemExit(f"City {cfg.slug!r} not loaded. Run processing.ingest.roads first.")
 
     with ingestion_run("daily_risk", city_id) as handle:
-        rainfall = resolve_rainfall(cfg, valid_date)
+        rainfall = resolve_rainfall(
+            cfg, valid_date, scenario_rain_7d, scenario_rain_24h
+        )
 
         with session_scope() as session:
             result = session.execute(
@@ -294,6 +335,7 @@ def run(city_slug: str, valid_date: dt.date | None) -> int:
                     "band_low": BAND_LOW_MAX,
                     "band_med": BAND_MEDIUM_MAX,
                     "provenance": rainfall["provenance"],
+                    "scenario": rainfall["scenario"],
                 },
             )
             written = result.rowcount
@@ -320,6 +362,8 @@ def run(city_slug: str, valid_date: dt.date | None) -> int:
     print(f"  antecedent 7d   : {rainfall['rain_7d_mm']:.1f} mm")
     print(f"  forecast 24h    : {rainfall['rain_24h_forecast_mm']:.1f} mm")
     print(f"  rainfall source : {rainfall['provenance']}")
+    if rainfall["scenario"]:
+        print("  *** SCENARIO RUN — rainfall is hypothetical, not observed ***")
     if rainfall["chirps_latency_days"] is not None:
         print(f"  CHIRPS latency  : {rainfall['chirps_latency_days']} days behind — disclosed at /v1/meta/model")
     print(f"\n  segments scored : {written:,}\n")
@@ -334,9 +378,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Score daily flood risk.")
     parser.add_argument("--city", default="abuja")
     parser.add_argument("--date", default=None, help="YYYY-MM-DD (default: today)")
+    parser.add_argument(
+        "--scenario-rain-7d",
+        type=float,
+        default=None,
+        help="Hypothetical 7-day antecedent rainfall in mm. Labelled SCENARIO everywhere.",
+    )
+    parser.add_argument(
+        "--scenario-rain-24h",
+        type=float,
+        default=None,
+        help="Hypothetical 24-hour forecast rainfall in mm. Labelled SCENARIO everywhere.",
+    )
     args = parser.parse_args(argv)
     day = dt.date.fromisoformat(args.date) if args.date else None
-    return run(args.city, day)
+    return run(args.city, day, args.scenario_rain_7d, args.scenario_rain_24h)
 
 
 if __name__ == "__main__":
