@@ -1,0 +1,92 @@
+# Three services, one database, one shared ./data bind mount.
+# The physical separation below is the hackathon brief §10 requirement.
+
+name: climatepass
+
+services:
+  db:
+    # Multi-arch (amd64 + arm64) PostGIS build. The official postgis/postgis
+    # image is amd64-only, which means qemu emulation on Apple Silicon —
+    # measurably slower for GIST index builds and zonal-stat bulk updates.
+    # Same PostGIS 16-3.4, works unchanged on an amd64 host at deploy (P10).
+    image: imresamu/postgis:16-3.4
+    environment:
+      POSTGRES_USER: climatepass
+      POSTGRES_PASSWORD: climatepass
+      POSTGRES_DB: climatepass
+    ports:
+      # 5434: verified free on this machine. 5433 is occupied by another
+      # process, 5432 by a local postgres on many dev machines.
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U climatepass -d climatepass"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Layer 3 — public REST API.
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://climatepass:climatepass@db:5432/climatepass
+      DATA_DIR: /app/data
+      DEMO_MODE: "${DEMO_MODE:-false}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./packages/core:/app/packages/core
+      - ./services/api:/app/services/api
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Layer 1 — EO ingestion, spatial processing, scoring.
+  processing:
+    build:
+      context: .
+      dockerfile: services/processing/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://climatepass:climatepass@db:5432/climatepass
+      DATA_DIR: /app/data
+      DEMO_MODE: "${DEMO_MODE:-false}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    volumes:
+      - ./packages/core:/app/packages/core
+      - ./services/processing:/app/services/processing
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Layer 2 — thresholds, subscriptions, notification dispatch.
+  alerts:
+    build:
+      context: .
+      dockerfile: services/alerts/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://climatepass:climatepass@db:5432/climatepass
+      DATA_DIR: /app/data
+      DEMO_MODE: "${DEMO_MODE:-false}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      WEBHOOK_HMAC_SECRET: "${WEBHOOK_HMAC_SECRET:-dev-secret-change-me}"
+    volumes:
+      - ./packages/core:/app/packages/core
+      - ./services/alerts:/app/services/alerts
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

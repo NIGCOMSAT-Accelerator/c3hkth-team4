@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "climatepass-alerts"
+version = "0.1.0"
+description = "ClimatePass AI thresholds, subscriptions and notification dispatch (layer 2 of 3)"
+requires-python = ">=3.11"
+dependencies = [
+    "climatepass-core",
+    "apscheduler>=3.10",
+    "httpx>=0.27",
+    "jinja2>=3.1",
+    "shapely>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools]
+packages = ["alerts"]

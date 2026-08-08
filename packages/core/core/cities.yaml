@@ -1,0 +1,44 @@
+# ClimatePass AI — area of interest definitions.
+#
+# bbox is [min_lon, min_lat, max_lon, max_lat] in EPSG:4326.
+# utm_epsg is the projected CRS used for ALL metric math (lengths, buffers,
+# zonal stats). Geometry is always STORED as EPSG:4326.
+#
+# aoi_variants exists because P2 has a scope guard: if the full FCT bbox
+# yields >80k road segments we tighten to `municipal` rather than blow the
+# schedule. Switching is a config change, not a code change.
+
+cities:
+  abuja:
+    name: Abuja Federal Capital Territory
+    country: Nigeria
+    # Full FCT: ~lat 8°24'N–9°21'N, lon 6°45'E–7°39'E
+    bbox: [6.75, 8.40, 7.65, 9.35]
+    # Map default centre — Central Area / Three Arms Zone.
+    centroid: [7.4913, 9.0579]
+    utm_epsg: 32632  # WGS 84 / UTM zone 32N
+    timezone: Africa/Lagos
+
+    aoi_variants:
+      full:
+        bbox: [6.75, 8.40, 7.65, 9.35]
+        note: Entire Federal Capital Territory.
+      municipal:
+        # AMAC + the built-up corridor. Contains the demo route
+        # (Central Area -> Lugbe), Kubwa, Gwarinpa, Asokoro, the airport road.
+        bbox: [7.25, 8.90, 7.62, 9.22]
+        note: Fallback AOI if the full FCT exceeds the P2 segment budget.
+
+    # Landmarks bundled as the offline geocoder fallback (P7). The demo must
+    # not depend on a live geocoder. Extended to ~40 entries in P7.
+    landmarks:
+      - { name: "Central Area", lat: 9.0579, lon: 7.4913 }
+      - { name: "Lugbe", lat: 8.9816, lon: 7.3736 }
+      - { name: "Wuse 2", lat: 9.0765, lon: 7.4626 }
+      - { name: "Maitama", lat: 9.0870, lon: 7.4951 }
+      - { name: "Garki", lat: 9.0333, lon: 7.4833 }
+      - { name: "Asokoro", lat: 9.0392, lon: 7.5261 }
+      - { name: "Gwarinpa", lat: 9.1088, lon: 7.4066 }
+      - { name: "Kubwa", lat: 9.1518, lon: 7.3269 }
+      - { name: "Nnamdi Azikiwe International Airport", lat: 9.0068, lon: 7.2632 }
+      - { name: "Jabi", lat: 9.0693, lon: 7.4258 }

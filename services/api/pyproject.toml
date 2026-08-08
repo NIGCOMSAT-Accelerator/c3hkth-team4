@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "climatepass-api"
+version = "0.1.0"
+description = "ClimatePass AI public REST API (layer 3 of 3)"
+requires-python = ">=3.11"
+dependencies = [
+    "climatepass-core",
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+    # Routing engine (P7): graph held in memory, refreshed on a timer.
+    "osmnx>=1.9",
+    "networkx>=3.3",
+    "geopandas>=0.14",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools]
+packages = ["api"]

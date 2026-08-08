@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.DS_Store
+node_modules
+apps/web/dist
+# data/ is bind-mounted, never baked into an image.
+data

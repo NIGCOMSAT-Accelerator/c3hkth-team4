@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+node_modules/
+apps/web/dist/
+apps/web/.vite/
+
+# Cached EO downloads and generated rasters. Large and reproducible —
+# never committed. data/ itself is kept via .gitkeep files.
+data/cache/*
+data/derived/*
+data/outbox/*
+!data/cache/.gitkeep
+!data/derived/.gitkeep
+!data/outbox/.gitkeep
