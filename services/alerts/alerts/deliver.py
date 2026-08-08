@@ -104,6 +104,20 @@ def deliver_email(payload: dict) -> dict:
 def deliver_webhook(payload: dict, url: str) -> dict:
     body = json.dumps(payload, default=str, separators=(",", ":")).encode()
     signature = sign(body, settings.webhook_hmac_secret)
+
+    if settings.demo_mode:
+        # A live POST to a third party mid-demo is both a network dependency
+        # and an uninvited side effect. Record what WOULD have been sent,
+        # signature included, so the payload is still inspectable on stage.
+        settings.outbox_dir.mkdir(parents=True, exist_ok=True)
+        stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%S")
+        path = settings.outbox_dir / f"{stamp}-webhook-{_slug(url)}.json"
+        path.write_text(json.dumps({"url": url, "signature": signature,
+                                    "body": json.loads(body)}, indent=2))
+        log.info("webhook_simulated", path=str(path))
+        return {"mode": "delivered_simulated", "delivered": True,
+                "detail": str(path), "signature": signature,
+                "note": "DEMO_MODE: recorded instead of sent."}
     try:
         response = httpx.post(
             url,

@@ -26,3 +26,6 @@ data/outbox/*
 
 # Screenshot scratch copied into the cache dir for container-side inspection
 data/cache/*.png
+
+# DB seed dump — regenerate with `make dump-db`
+deploy/seed.sql.gz

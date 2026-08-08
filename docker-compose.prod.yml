@@ -1,0 +1,82 @@
+# Production overlay. Use with the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences from dev that matter:
+#   - no bind mounts, no --reload: the image is the artefact
+#   - Caddy terminates TLS and obtains certificates automatically
+#   - the API is not published directly; only Caddy is
+#   - the database is not published at all
+#
+# Seed production from a dump of local (make dump-db / make restore-db).
+# Do NOT re-run the ingestion pipeline in production: it would re-download
+# ~90 MB of DEM over whatever connection the box has, and the derived rasters
+# are already deterministic outputs of data you have.
+
+services:
+  db:
+    ports: !reset []
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    command:
+      ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    environment:
+      DEMO_MODE: "${DEMO_MODE:-false}"
+      DEMO_DATE: "${DEMO_DATE:-}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      API_CORS_ORIGINS: "${PUBLIC_ORIGIN:-*}"
+    ports: !reset []
+    volumes:
+      # Derived rasters and caches only; source comes from the image.
+      - ./data:/app/data:ro
+    restart: always
+
+  processing:
+    volumes:
+      - ./data:/app/data
+    restart: "no"
+
+  alerts:
+    environment:
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      WEBHOOK_HMAC_SECRET: "${WEBHOOK_HMAC_SECRET:?set a real secret in production}"
+      WEB_BASE_URL: "${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN}"
+    volumes:
+      - ./data:/app/data
+    restart: always
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: ""
+    restart: always
+
+  caddy:
+    image: caddy:2.8-alpine
+    depends_on: [api, web]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_DOMAIN: "${PUBLIC_DOMAIN:?set PUBLIC_DOMAIN, e.g. climatepass.example.ng}"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: always
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

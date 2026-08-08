@@ -168,7 +168,7 @@ Updated: **Sat 8 Aug, ~14:30 WAT**
 | P7 API + routing | B | ✅ done — 9 endpoints, routing live, 30 tests |
 | P8 Web app | C | ✅ done — 3 routes, live against real API |
 | P9 Alerts | B | ✅ done — worker live, alert fired, .eml written |
-| P10 Freeze + audit | D+B | ⬜ Sunday 16:00–18:00 |
+| P10 Freeze + audit | D+B | 🟡 demo mode + smoke verified air-gapped; deploy config ready, NOT deployed |
 
 **Bandwidth is the binding constraint on this machine, not compute.**
 Measured: PyPI 0.09–0.90 MB/s (highly variable), AWS S3 ~0.08 MB/s. The

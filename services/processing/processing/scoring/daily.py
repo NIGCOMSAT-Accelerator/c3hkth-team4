@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import sys
 
 import httpx
@@ -211,6 +212,21 @@ def resolve_rainfall(
     contributions JSONB, and /v1/meta/model. Never let a hypothetical figure
     reach a user looking like an observation.
     """
+    # Cache the resolved rainfall per city/date. Under DEMO_MODE this is the
+    # only source: hard rule 1 says the demo never touches the network, and
+    # rainfall was the last stage still reaching for it.
+    cache_path = settings.cache_dir / "rainfall" / f"{cfg.slug}_{valid_date}.json"
+    if scenario_rain_7d is None and scenario_rain_24h is None:
+        if cache_path.exists():
+            cached = json.loads(cache_path.read_text())
+            log.info("rainfall_cache_hit", path=str(cache_path), provenance=cached["provenance"])
+            return cached
+        if settings.demo_mode:
+            raise RuntimeError(
+                f"DEMO_MODE is on and {cache_path} is missing. The demo never "
+                "downloads; run once with DEMO_MODE=false to populate the cache."
+            )
+
     if scenario_rain_7d is not None or scenario_rain_24h is not None:
         rain_7d = scenario_rain_7d if scenario_rain_7d is not None else 0.0
         rain_24h = scenario_rain_24h if scenario_rain_24h is not None else 0.0
@@ -258,7 +274,7 @@ def resolve_rainfall(
         provenance=provenance,
         chirps_latency_days=latency,
     )
-    return {
+    resolved = {
         "rain_7d_mm": rain_7d,
         "rain_24h_forecast_mm": forecast_24h,
         "provenance": provenance,
@@ -268,6 +284,10 @@ def resolve_rainfall(
         "trigger_source": trigger_source,
         "scenario": False,
     }
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(resolved, indent=2))
+    log.info("rainfall_cached", path=str(cache_path))
+    return resolved
 
 
 # --------------------------------------------------------------------------

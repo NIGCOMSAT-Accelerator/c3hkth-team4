@@ -1,0 +1,39 @@
+# Caddy obtains and renews TLS certificates automatically from Let's Encrypt.
+# The only prerequisite is that PUBLIC_DOMAIN resolves to this host and that
+# ports 80 and 443 are reachable.
+
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+
+	# API first: these prefixes must not fall through to the SPA.
+	handle /v1/* {
+		reverse_proxy api:8000
+	}
+	handle /health* {
+		reverse_proxy api:8000
+	}
+	handle /docs* {
+		reverse_proxy api:8000
+	}
+	handle /openapi.json {
+		reverse_proxy api:8000
+	}
+
+	# Everything else is the single-page app.
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

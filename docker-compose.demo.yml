@@ -1,0 +1,37 @@
+# Demo safety mode — the configuration used on stage.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+#
+# `internal: true` gives the containers NO route to the internet. That is the
+# point: it is not a promise that the demo works offline, it is a proof. If any
+# code path still reaches for the network, it fails here rather than in front
+# of judges on conference wifi.
+#
+# Published ports still work — the host reaches the API through docker-proxy,
+# which does not require the container to have outbound connectivity.
+
+networks:
+  demo:
+    internal: true
+
+services:
+  db:
+    networks: [demo]
+
+  api:
+    environment:
+      DEMO_MODE: "true"
+      DEMO_DATE: "2026-08-02"
+    networks: [demo]
+
+  processing:
+    environment:
+      DEMO_MODE: "true"
+      DEMO_DATE: "2026-08-02"
+    networks: [demo]
+
+  alerts:
+    environment:
+      DEMO_MODE: "true"
+      DEMO_DATE: "2026-08-02"
+    networks: [demo]

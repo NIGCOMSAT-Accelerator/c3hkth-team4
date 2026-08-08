@@ -51,8 +51,27 @@ shell-processing: ## Shell into the processing container
 psql: ## Open psql against the database
 	$(COMPOSE) exec db psql -U climatepass -d climatepass
 
-smoke: ## Run the demo-path smoke test (P10 supplies it)
+smoke: ## Run the demo-path smoke test (under 30s)
 	./scripts/smoke.sh
+
+demo-up: ## Start in DEMO_MODE on an air-gapped network (no internet at all)
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.demo.yml up -d
+
+demo-verify: ## Prove the demo path works with no internet at all
+	./scripts/verify-demo.sh
+
+dump-db: ## Dump the database to deploy/seed.sql.gz (seed production from this)
+	@mkdir -p deploy
+	$(COMPOSE) exec -T db pg_dump -U climatepass --no-owner --no-acl climatepass | gzip > deploy/seed.sql.gz
+	@echo "wrote deploy/seed.sql.gz ($$(du -h deploy/seed.sql.gz | cut -f1))"
+
+restore-db: ## Restore deploy/seed.sql.gz into the running database
+	@test -f deploy/seed.sql.gz || (echo "deploy/seed.sql.gz not found — run make dump-db first" && exit 1)
+	gunzip -c deploy/seed.sql.gz | $(COMPOSE) exec -T db psql -U climatepass -d climatepass
+	@echo "restored. Run 'make smoke' to confirm."
+
+prod-up: ## Start the production stack (needs PUBLIC_DOMAIN and WEBHOOK_HMAC_SECRET)
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 clean: ## Stop everything and DESTROY the database volume
 	$(COMPOSE) down -v
