@@ -129,6 +129,7 @@ def build_routing_graph(cfg: CityConfig, variant: str | None = "municipal") -> n
 
     routing = ox.add_edge_speeds(routing)
     routing = ox.add_edge_travel_times(routing)
+    _prune_attributes(routing)
 
     cache.parent.mkdir(parents=True, exist_ok=True)
     ox.save_graphml(routing, cache)
@@ -140,6 +141,24 @@ def build_routing_graph(cfg: CityConfig, variant: str | None = "municipal") -> n
         cached=str(cache),
     )
     return routing
+
+
+# Everything the routing engine and the GeoJSON response actually read. An
+# osmnx graph also carries osmid, oneway, reversed, speed_kph, lanes, maxspeed,
+# ref, bridge, tunnel, junction and access — dead weight repeated across 19,444
+# edges, and this service runs inside a 512 MB box.
+KEEP_EDGE_ATTRS = frozenset({"length", "travel_time", "geometry", "name", "highway"})
+KEEP_NODE_ATTRS = frozenset({"x", "y"})
+
+
+def _prune_attributes(graph: nx.MultiDiGraph) -> None:
+    """Drop every attribute the API never reads. Memory is the constraint here."""
+    for _, _, data in graph.edges(data=True):
+        for key in [k for k in data if k not in KEEP_EDGE_ATTRS]:
+            del data[key]
+    for _, data in graph.nodes(data=True):
+        for key in [k for k in data if k not in KEEP_NODE_ATTRS]:
+            del data[key]
 
 
 def attach_risk(graph: nx.MultiDiGraph, city_slug: str, valid_date: dt.date | None = None) -> dict:

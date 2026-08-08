@@ -29,8 +29,12 @@ services:
     region: frankfurt # closest Render region to Nigeria
     dockerfilePath: ./services/api/Dockerfile
     dockerContext: .
-    # Render injects $PORT and expects the process to bind it. No --reload.
-    dockerCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 2
+    # ONE worker, deliberately. The routing graph is held in process memory and
+    # is NOT shared between workers — each one loads its own copy. Measured at
+    # ~180 MB per worker after pruning, so two workers exceed Starter's 512 MB
+    # and the deploy is killed with "Ran out of memory". Scale by adding
+    # instances, not workers, until the graph moves to a shared service.
+    dockerCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /health
     autoDeploy: false # deploy deliberately, not on every push during a sprint
     envVars:
