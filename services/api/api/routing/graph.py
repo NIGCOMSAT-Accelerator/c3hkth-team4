@@ -152,15 +152,12 @@ def attach_risk(graph: nx.MultiDiGraph, city_slug: str, valid_date: dt.date | No
     """
     global _median_risk
 
+    from api.dates import resolve_valid_date
+
     with session_scope() as session:
-        target = valid_date or session.scalar(
-            text(
-                "SELECT max(valid_date) FROM segment_risk sr"
-                " JOIN road_segments s ON s.id = sr.segment_id"
-                " JOIN cities c ON c.id = s.city_id WHERE c.slug = :slug"
-            ),
-            {"slug": city_slug},
-        )
+        # Same resolver the endpoints use, so the map and the router can never
+        # disagree about which day they are showing.
+        target = resolve_valid_date(session, valid_date)
         if target is None:
             log.warning("no_risk_data", city=city_slug, note="edges default to 0 risk")
             return {"date": None, "edges_with_risk": 0, "median": 0.0}

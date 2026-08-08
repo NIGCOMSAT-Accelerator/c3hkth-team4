@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.dates import resolve_valid_date
 from api.errors import ApiError
 from api.explain import explain_segment
 from core.db import get_session
@@ -42,7 +43,7 @@ def segments(
             {"received": bbox},
         ) from exc
 
-    target = date or session.scalar(text("SELECT max(valid_date) FROM segment_risk"))
+    target = resolve_valid_date(session, date)
     if target is None:
         raise ApiError(
             "no_risk_data",
@@ -106,7 +107,7 @@ def risk_point(
     lon: float = Query(..., ge=-180, le=180, examples=[7.4913]),
     session: Session = Depends(get_session),
 ) -> dict:
-    target = session.scalar(text("SELECT max(valid_date) FROM segment_risk"))
+    target = resolve_valid_date(session)
     if target is None:
         raise ApiError("no_risk_data", "No risk has been scored yet.", 503)
 

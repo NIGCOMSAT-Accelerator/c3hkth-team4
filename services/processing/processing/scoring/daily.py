@@ -134,8 +134,19 @@ def chirps_daily_mm(
     return totals, latency
 
 
-def open_meteo(lon: float, lat: float, timezone: str) -> tuple[dict[dt.date, float], float]:
-    """Daily past totals and the next 24 h forecast total, both in mm."""
+def open_meteo(
+    lon: float, lat: float, timezone: str, valid_date: dt.date | None = None
+) -> tuple[dict[dt.date, float], float, str]:
+    """Daily past totals plus the 24 h trigger total, both in mm.
+
+    The trigger must be anchored to `valid_date`, not to wall-clock now.
+    Scoring a past date with today's forecast silently pairs one day's
+    antecedent rainfall with another day's trigger, which is wrong and quietly
+    so. For a historical date we use the rainfall actually observed the
+    following day — a perfect-forecast hindcast — and label it as such, because
+    a hindcast flatters a forecasting system and must never be presented as a
+    live prediction.
+    """
     response = httpx.get(
         OPEN_METEO_URL,
         params={
@@ -158,14 +169,30 @@ def open_meteo(lon: float, lat: float, timezone: str) -> tuple[dict[dt.date, flo
         day = dt.date.fromisoformat(stamp[:10])
         daily[day] = daily.get(day, 0.0) + float(value)
 
-    now = dt.datetime.now()
-    next_24h = sum(
-        value
-        for stamp, value in zip(hourly["time"], hourly["precipitation"], strict=True)
-        if value is not None and now <= dt.datetime.fromisoformat(stamp) <= now + dt.timedelta(hours=24)
+    today = dt.date.today()
+    if valid_date is None or valid_date >= today:
+        anchor = dt.datetime.now()
+        next_24h = sum(
+            value
+            for stamp, value in zip(hourly["time"], hourly["precipitation"], strict=True)
+            if value is not None
+            and anchor <= dt.datetime.fromisoformat(stamp) <= anchor + dt.timedelta(hours=24)
+        )
+        trigger_source = "open-meteo forecast (next 24h)"
+    else:
+        next_24h = daily.get(valid_date + dt.timedelta(days=1), 0.0)
+        trigger_source = (
+            f"observed rainfall on {valid_date + dt.timedelta(days=1)} "
+            "(perfect-forecast hindcast)"
+        )
+
+    log.info(
+        "open_meteo_loaded",
+        days=len(daily),
+        trigger_24h_mm=round(next_24h, 1),
+        trigger_source=trigger_source,
     )
-    log.info("open_meteo_loaded", days=len(daily), forecast_24h_mm=round(next_24h, 1))
-    return daily, float(next_24h)
+    return daily, float(next_24h), trigger_source
 
 
 def resolve_rainfall(
@@ -199,6 +226,7 @@ def resolve_rainfall(
             "chirps_days": 0,
             "open_meteo_days": 0,
             "chirps_latency_days": None,
+            "trigger_source": "SCENARIO",
             "scenario": True,
         }
 
@@ -206,7 +234,7 @@ def resolve_rainfall(
     start = valid_date - dt.timedelta(days=ANTECEDENT_DAYS - 1)
 
     chirps, latency = chirps_daily_mm(lon, lat, start, valid_date)
-    meteo, forecast_24h = open_meteo(lon, lat, cfg.timezone)
+    meteo, forecast_24h, trigger_source = open_meteo(lon, lat, cfg.timezone, valid_date)
 
     window = [start + dt.timedelta(days=i) for i in range(ANTECEDENT_DAYS)]
     per_day, from_chirps, filled = {}, 0, 0
@@ -219,7 +247,10 @@ def resolve_rainfall(
             filled += 1
 
     rain_7d = float(sum(per_day.values()))
-    provenance = f"chirps:{from_chirps}d, open-meteo:{filled}d"
+    provenance = (
+        f"antecedent: chirps:{from_chirps}d, open-meteo:{filled}d; "
+        f"trigger: {trigger_source}"
+    )
     log.info(
         "rainfall_resolved",
         rain_7d_mm=round(rain_7d, 1),
@@ -234,6 +265,7 @@ def resolve_rainfall(
         "chirps_days": from_chirps,
         "open_meteo_days": filled,
         "chirps_latency_days": latency,
+        "trigger_source": trigger_source,
         "scenario": False,
     }
 

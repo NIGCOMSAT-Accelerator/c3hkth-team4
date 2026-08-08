@@ -8,6 +8,7 @@ from shapely.geometry import LineString
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from api.dates import resolve_valid_date
 from api.errors import ApiError
 from api.schemas import SubscriptionCreate, SubscriptionOut
 from core.db import get_session
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/v1", tags=["alerts"])
     ),
 )
 def active_alerts(limit: int = 10, session: Session = Depends(get_session)) -> dict:
-    target = session.scalar(text("SELECT max(valid_date) FROM segment_risk"))
+    target = resolve_valid_date(session)
     if target is None:
         raise ApiError("no_risk_data", "No risk has been scored yet.", 503)
 
