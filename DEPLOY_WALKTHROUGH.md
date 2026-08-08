@@ -222,6 +222,23 @@ been set automatically from the database.
 to sleep. Either upgrade `climatepass-api` to Starter, or open the link
 yourself a couple of minutes before anyone else does.
 
+**The site says "Not Found" at the root URL, but the deploy succeeded.**
+Render built the site but cannot find `index.html` where it was told to look.
+Fix it on the service itself rather than waiting for a blueprint sync:
+`climatepass-web` → **Settings** and check two fields —
+
+| Field | Must be |
+|---|---|
+| Root Directory | `apps/web` |
+| Publish Directory | `dist` |
+
+If Root Directory is blank, Publish Directory has to be `apps/web/dist`
+instead. Set them, then **Manual Deploy → Clear build cache & deploy**.
+
+> Editing `render.yaml` alone will NOT change an already-created service.
+> A blueprint is applied when resources are created; afterwards you either
+> edit the service in the dashboard, or go to the Blueprint and re-sync.
+
 **The map shows no roads.** Check `/health/routing` on your API URL — if
 `"loaded": false`, the routing graph is missing from the image. Same fix as the
 build failure above.
