@@ -24,7 +24,14 @@ data/outbox/*
 # The built routing graph is committed on purpose: Render and friends build
 # from the repo, so this is how the API gets its topology without a disk.
 # 11 MB, deterministic output of `processing.ingest.roads`.
+#
+# Three lines, and all three are needed. Git cannot re-include a file inside an
+# ignored directory, so the directory must be un-ignored first (line 1) — but
+# that alone sweeps in EVERYTHING in it, including the 102 MB source graph,
+# which is over GitHub's 100 MB hard limit. So re-ignore the contents (line 2)
+# and then admit the one file we want (line 3).
 !data/cache/osm/
+data/cache/osm/*
 !data/cache/osm/*_routing.graphml
 !data/derived/.gitkeep
 !data/outbox/.gitkeep
