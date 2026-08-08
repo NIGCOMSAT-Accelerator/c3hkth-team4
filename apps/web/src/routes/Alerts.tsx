@@ -120,7 +120,7 @@ export default function Alerts() {
             </div>
           ) : (
             <form
-              className="panel space-y-4 p-5"
+              className="panel relative z-20 space-y-4 p-5"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (ready) subscribe.mutate();

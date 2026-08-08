@@ -57,6 +57,14 @@
     @apply rounded border border-tarmac-700 bg-tarmac-900/80 backdrop-blur-sm;
   }
 
+  /* Overlays must be opaque. The translucent .panel is right for something
+     sitting in the layout, but a dropdown floating over a dense list needs to
+     occlude it — and backdrop-blur cannot be relied on to do that, since it
+     silently degrades to plain transparency wherever compositing is limited. */
+  .panel-solid {
+    @apply rounded border border-tarmac-700 bg-tarmac-850 shadow-2xl shadow-black/60;
+  }
+
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded border px-4 py-2.5
            font-data text-xs uppercase tracking-widest transition-colors duration-150

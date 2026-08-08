@@ -56,7 +56,10 @@ export default function Home() {
         </section>
 
         <form
-          className="panel space-y-4 p-5"
+          // z-20: .panel uses backdrop-blur, which creates a stacking context,
+          // so the dropdown's own z-index cannot lift it above the corridor
+          // cards that follow in the DOM. The panel has to outrank them.
+          className="panel relative z-20 space-y-4 p-5"
           onSubmit={(e) => {
             e.preventDefault();
             analyze();
