@@ -190,7 +190,7 @@ Correlation of each feature with the final index: HAND **−0.842**, distance-to
 | [INTEGRATION.md](INTEGRATION.md) | For integrators: runnable curl for every endpoint, webhook HMAC verification, a complete Python client |
 | [DEPLOY_WALKTHROUGH.md](DEPLOY_WALKTHROUGH.md) | Render, click by click — start here to deploy |
 | [DEPLOY.md](DEPLOY.md) | Why the deployment is shaped this way; VM + Caddy alternative |
-| [CLAUDE.md](CLAUDE.md) | Working notes, hard rules, current status |
+| [NOTES.md](NOTES.md) | Working notes, hard rules, current status |
 
 ---
 

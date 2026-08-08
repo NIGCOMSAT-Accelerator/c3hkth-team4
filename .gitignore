@@ -14,7 +14,6 @@ venv/
 node_modules/
 apps/web/dist/
 apps/web/.vite/
-.CLAUDE.md
 # Cached EO downloads and generated rasters. Large and reproducible —
 # never committed. data/ itself is kept via .gitkeep files.
 data/cache/*

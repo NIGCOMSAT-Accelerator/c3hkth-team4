@@ -1,6 +1,6 @@
 """Shared plumbing for every ingestion and scoring stage.
 
-Hard rule 6 in CLAUDE.md: every pipeline stage writes an ingestion_runs row.
+Hard rule 6 in NOTES.md: every pipeline stage writes an ingestion_runs row.
 That table is a demo asset — we show it to judges to prove the ingestion is
 automated and repeatable. One helper here means five pipeline modules cannot
 drift into five different conventions.
