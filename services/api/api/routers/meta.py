@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from api.errors import ApiError
+from api.routing.engine import SEVERE_RISK_MULTIPLIER, SEVERE_RISK_THRESHOLD
 from core.config import get_city, settings
 from core.db import get_session
 from core.logging import get_logger
@@ -144,6 +145,15 @@ def model_card(session: Session = Depends(get_session)) -> dict:
             "formula": "0.6 * max(segment_risk) + 0.4 * length_weighted_mean(segment_risk)",
             "rationale": "One impassable segment ruins a route; a plain mean would hide it.",
             "safest_route_cost": "travel_time * (1 + lambda * (risk/100)^2), lambda default 3.0",
+            "severe_risk_threshold": SEVERE_RISK_THRESHOLD,
+            "severe_risk_multiplier": SEVERE_RISK_MULTIPLIER,
+            "severe_rationale": (
+                "Segments at or above the severe threshold cost 50x rather than "
+                "being deleted: deleting can disconnect the graph and return no "
+                "route, which is a worse answer than a bad route clearly marked. "
+                "The threshold matches the High band so the router acts on what "
+                "the map calls High."
+            ),
         },
         "rainfall_provenance": rainfall_note,
         "validation": validation or {

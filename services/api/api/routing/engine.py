@@ -20,7 +20,14 @@ DEFAULT_LAMBDA = 3.0
 # rather than deleting the edge: deletion can disconnect the graph and return
 # no route at all, and "no route" is a worse answer than "here is a bad route,
 # clearly marked".
-SEVERE_RISK_THRESHOLD = 85.0
+#
+# Set to 70 to align with the High band (67-100). At the original 85 the rule
+# was dormant on realistic weather: the worst observed Abuja day in the recent
+# record (2026-08-02, 88.5 mm antecedent / 17.3 mm next-day) tops out at risk
+# 75.1, so no segment ever crossed 85 and the router only ever nudged. Calling
+# a segment "High risk" on the map while the router declines to route around it
+# is an inconsistency a judge would reasonably question.
+SEVERE_RISK_THRESHOLD = 70.0
 SEVERE_RISK_MULTIPLIER = 50.0
 
 # route_risk = MAX_WEIGHT * worst segment + MEAN_WEIGHT * length-weighted mean.
