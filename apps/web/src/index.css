@@ -83,6 +83,33 @@
   }
 }
 
+/* Map labels sit on top of dark cartography; the halo keeps them legible
+   wherever they land, without a panel behind every word. */
+.cp-label {
+  text-shadow:
+    0 1px 3px #0b0e11,
+    0 0 8px #0b0e11,
+    0 0 2px #0b0e11;
+}
+
+/* Your position. A pulsing ring reads as "live" the way a static pin cannot,
+   and the animation is suppressed under prefers-reduced-motion below. */
+.cp-user-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #6fb3ff;
+  border: 2px solid #0b0e11;
+  box-shadow: 0 0 0 3px rgba(111, 179, 255, 0.28);
+  animation: cp-pulse 2.4s ease-out infinite;
+}
+
+@keyframes cp-pulse {
+  0% { box-shadow: 0 0 0 3px rgba(111, 179, 255, 0.32); }
+  70% { box-shadow: 0 0 0 14px rgba(111, 179, 255, 0); }
+  100% { box-shadow: 0 0 0 3px rgba(111, 179, 255, 0); }
+}
+
 /* MapLibre's default chrome does not belong on an instrument panel. */
 .maplibregl-ctrl-attrib {
   @apply !bg-tarmac-950/80 !text-[10px] !text-silt;

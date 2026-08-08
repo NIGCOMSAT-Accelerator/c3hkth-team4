@@ -6,10 +6,13 @@ import { RiskGauge } from "@/components/RiskGauge";
 import { RiskMap } from "@/components/RiskMap";
 import { formatDistance, formatDuration, riskColor } from "@/lib/risk";
 
+const NO_LANDMARKS: never[] = [];
+
 export default function Results() {
   const [params] = useSearchParams();
   const [lambda, setLambda] = useState(3);
   const [showRisk, setShowRisk] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
   const [bbox, setBbox] = useState("7.25,8.90,7.62,9.22");
   const [zoom, setZoom] = useState(10.4);
 
@@ -35,6 +38,8 @@ export default function Results() {
     enabled: valid,
     placeholderData: (prev) => prev,
   });
+
+  const places = useQuery({ queryKey: ["landmarks"], queryFn: () => api.landmarks() });
 
   const segments = useQuery({
     queryKey: ["segments", bbox, classesForZoom],
@@ -191,7 +196,10 @@ export default function Results() {
           segments={segments.data}
           fastest={fastest}
           safest={safest}
+          landmarks={places.data?.landmarks ?? NO_LANDMARKS}
           showRisk={showRisk}
+          showLabels={showLabels}
+          trackUser
           onMoveEnd={(b, z) => {
             setBbox(b);
             setZoom(z);
@@ -211,6 +219,15 @@ export default function Results() {
             {segments.data?.truncated && (
               <span className="label text-laterite-400">capped</span>
             )}
+          </label>
+          <label className="mt-1.5 flex cursor-pointer items-center gap-2 text-xs text-ash">
+            <input
+              type="checkbox"
+              checked={showLabels}
+              onChange={(e) => setShowLabels(e.target.checked)}
+              className="accent-[#D9903F]"
+            />
+            Place &amp; street names
           </label>
           <div className="mt-3 border-t border-tarmac-800 pt-2.5">
             <div className="label mb-1.5">Routes</div>

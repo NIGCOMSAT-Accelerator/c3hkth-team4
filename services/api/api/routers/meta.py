@@ -93,6 +93,32 @@ def geocode(
 
 
 @router.get(
+    "/meta/landmarks",
+    summary="Bundled gazetteer of places",
+    description=(
+        "Districts and landmarks with approximate centroids. Serves two jobs: "
+        "offline geocoding, and the place labels the map draws. Bundled rather "
+        "than fetched so the map stays legible with no network at all."
+    ),
+)
+def landmarks(city: str = "abuja") -> dict:
+    cfg = get_city(city)
+    return {
+        "city": cfg.slug,
+        "count": len(cfg.landmarks),
+        "landmarks": [
+            {
+                "name": lm["name"],
+                "lat": lm["lat"],
+                "lon": lm["lon"],
+                "kind": lm.get("kind", "place"),
+            }
+            for lm in cfg.landmarks
+        ],
+    }
+
+
+@router.get(
     "/meta/model",
     summary="How the risk score is computed",
     description=(

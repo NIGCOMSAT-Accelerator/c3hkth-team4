@@ -29,16 +29,52 @@ cities:
         bbox: [7.25, 8.90, 7.62, 9.22]
         note: Fallback AOI if the full FCT exceeds the P2 segment budget.
 
-    # Landmarks bundled as the offline geocoder fallback (P7). The demo must
-    # not depend on a live geocoder. Extended to ~40 entries in P7.
+    # Bundled gazetteer: powers offline geocoding AND the map's place labels.
+    # Positions are approximate district/landmark centroids, good to a few
+    # hundred metres — adequate for a label and for seeding a route, not a
+    # survey reference. All lie inside the municipal AOI.
     landmarks:
-      - { name: "Central Area", lat: 9.0579, lon: 7.4913 }
-      - { name: "Lugbe", lat: 8.9816, lon: 7.3736 }
-      - { name: "Wuse 2", lat: 9.0765, lon: 7.4626 }
-      - { name: "Maitama", lat: 9.0870, lon: 7.4951 }
-      - { name: "Garki", lat: 9.0333, lon: 7.4833 }
-      - { name: "Asokoro", lat: 9.0392, lon: 7.5261 }
-      - { name: "Gwarinpa", lat: 9.1088, lon: 7.4066 }
-      - { name: "Kubwa", lat: 9.1518, lon: 7.3269 }
-      - { name: "Nnamdi Azikiwe International Airport", lat: 9.0068, lon: 7.2632 }
-      - { name: "Jabi", lat: 9.0693, lon: 7.4258 }
+      # --- core city ---
+      - { name: "Central Area", lat: 9.0579, lon: 7.4913, kind: district }
+      - { name: "Central Business District", lat: 9.0450, lon: 7.4850, kind: district }
+      - { name: "Garki", lat: 9.0333, lon: 7.4833, kind: district }
+      - { name: "Garki II", lat: 9.0290, lon: 7.4900, kind: district }
+      - { name: "Area 1", lat: 9.0230, lon: 7.4900, kind: district }
+      - { name: "Area 11", lat: 9.0350, lon: 7.5000, kind: district }
+      - { name: "Wuse 2", lat: 9.0765, lon: 7.4626, kind: district }
+      - { name: "Wuse Zone 1", lat: 9.0648, lon: 7.4735, kind: district }
+      - { name: "Maitama", lat: 9.0870, lon: 7.4951, kind: district }
+      - { name: "Asokoro", lat: 9.0392, lon: 7.5261, kind: district }
+      - { name: "Guzape", lat: 9.0450, lon: 7.5300, kind: district }
+      # --- north west corridor ---
+      - { name: "Jabi", lat: 9.0693, lon: 7.4258, kind: district }
+      - { name: "Jabi Lake", lat: 9.0700, lon: 7.4200, kind: water }
+      - { name: "Utako", lat: 9.0716, lon: 7.4400, kind: district }
+      - { name: "Wuye", lat: 9.0533, lon: 7.4400, kind: district }
+      - { name: "Kado", lat: 9.0900, lon: 7.4300, kind: district }
+      - { name: "Katampe", lat: 9.0900, lon: 7.4600, kind: district }
+      - { name: "Mpape", lat: 9.1200, lon: 7.4800, kind: district }
+      - { name: "Life Camp", lat: 9.1000, lon: 7.4200, kind: district }
+      - { name: "Gwarinpa", lat: 9.1088, lon: 7.4066, kind: district }
+      - { name: "Dawaki", lat: 9.1300, lon: 7.3900, kind: district }
+      - { name: "Dutse", lat: 9.1400, lon: 7.3700, kind: district }
+      - { name: "Kubwa", lat: 9.1518, lon: 7.3269, kind: district }
+      - { name: "Idu", lat: 9.0900, lon: 7.3600, kind: district }
+      # --- south ---
+      - { name: "Durumi", lat: 9.0180, lon: 7.4700, kind: district }
+      - { name: "Gudu", lat: 9.0100, lon: 7.4600, kind: district }
+      - { name: "Games Village", lat: 9.0100, lon: 7.4550, kind: district }
+      - { name: "Kaura", lat: 9.0100, lon: 7.4300, kind: district }
+      - { name: "Apo", lat: 8.9986, lon: 7.4700, kind: district }
+      - { name: "Lokogoma", lat: 8.9900, lon: 7.4400, kind: district }
+      - { name: "Galadimawa", lat: 8.9950, lon: 7.4300, kind: district }
+      - { name: "Lugbe", lat: 8.9816, lon: 7.3736, kind: district }
+      - { name: "Nnamdi Azikiwe International Airport", lat: 9.0068, lon: 7.2632, kind: transport }
+      # --- landmarks ---
+      - { name: "Aso Rock", lat: 9.0820, lon: 7.5390, kind: landmark }
+      - { name: "Three Arms Zone", lat: 9.0510, lon: 7.5170, kind: landmark }
+      - { name: "National Mosque", lat: 9.0455, lon: 7.4870, kind: landmark }
+      - { name: "National Christian Centre", lat: 9.0490, lon: 7.4930, kind: landmark }
+      - { name: "Millennium Park", lat: 9.0790, lon: 7.5010, kind: landmark }
+      - { name: "Berger Junction", lat: 9.0600, lon: 7.4450, kind: junction }
+      - { name: "Nyanya", lat: 9.0000, lon: 7.5800, kind: district }

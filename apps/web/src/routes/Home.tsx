@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api, type GeocodeResult } from "@/api/client";
+import { api, type AlertCluster, type GeocodeResult } from "@/api/client";
 import { PlaceInput } from "@/components/PlaceInput";
 import { RiskMap } from "@/components/RiskMap";
+import { CorridorDetail } from "@/components/CorridorDetail";
 import { riskColor } from "@/lib/risk";
 
+const NO_LANDMARKS: never[] = [];
 const CITY_BBOX = "7.25,8.90,7.62,9.22";
 const MAJOR = "motorway,trunk,primary,motorway_link,trunk_link";
 
@@ -14,7 +16,10 @@ export default function Home() {
   const [origin, setOrigin] = useState<GeocodeResult | null>(null);
   const [destination, setDestination] = useState<GeocodeResult | null>(null);
 
+  const [selected, setSelected] = useState<AlertCluster | null>(null);
+
   const alerts = useQuery({ queryKey: ["alerts", 6], queryFn: () => api.alerts(6) });
+  const places = useQuery({ queryKey: ["landmarks"], queryFn: () => api.landmarks() });
   // The network itself, so the landing page is the instrument rather than an
   // advert for one. Major roads only: this is a city-wide view.
   const network = useQuery({
@@ -91,8 +96,17 @@ export default function Home() {
 
             {alerts.data?.clusters.map((c) => {
               const colour = riskColor(c.peak_risk);
+              const isSelected = selected?.name === c.name;
               return (
-                <article key={c.name} className="panel flex items-center gap-3 px-3.5 py-2.5">
+                <button
+                  key={c.name}
+                  type="button"
+                  onClick={() => setSelected(isSelected ? null : c)}
+                  aria-pressed={isSelected}
+                  className={`panel flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:border-tarmac-600 ${
+                    isSelected ? "border-signal/50 bg-tarmac-800/60" : ""
+                  }`}
+                >
                   <div className="tnum w-9 shrink-0 font-data text-xl leading-none" style={{ color: colour }}>
                     {Math.round(c.peak_risk)}
                   </div>
@@ -113,16 +127,41 @@ export default function Home() {
                     </div>
                     <div className="label mt-1">mean {Math.round(c.mean_risk)}</div>
                   </div>
-                </article>
+                  <span className="shrink-0 font-data text-xs text-silt" aria-hidden>
+                    {isSelected ? "\u2212" : "\u203a"}
+                  </span>
+                </button>
               );
             })}
           </div>
+
+          {selected && (
+            <div className="mt-3">
+              <CorridorDetail cluster={selected} onClose={() => setSelected(null)} />
+            </div>
+          )}
         </section>
       </div>
 
       {/* ------------------------------------------------------------ map */}
       <div className="relative min-h-[460px] overflow-hidden rounded border border-tarmac-800 lg:min-h-[680px]">
-        <RiskMap className="absolute inset-0" segments={network.data} showRisk />
+        <RiskMap
+          className="absolute inset-0"
+          segments={network.data}
+          landmarks={places.data?.landmarks ?? NO_LANDMARKS}
+          showRisk
+          showLabels
+          trackUser
+          focus={
+            selected
+              ? {
+                  lat: selected.centroid.coordinates[1],
+                  lon: selected.centroid.coordinates[0],
+                  zoom: 13.2,
+                }
+              : null
+          }
+        />
 
         <div className="panel absolute left-3 top-3 z-10 px-3 py-2.5">
           <div className="label mb-1.5">Road risk · {network.data?.valid_date ?? "—"}</div>

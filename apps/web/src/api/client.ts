@@ -139,6 +139,13 @@ export interface AlertCluster {
   centroid: { type: "Point"; coordinates: [number, number] };
 }
 
+export interface Landmark {
+  name: string;
+  lat: number;
+  lon: number;
+  kind: string;
+}
+
 export interface Subscription {
   id: number;
   email: string;
@@ -188,6 +195,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ channel: "email", ...payload }),
     }),
+
+  landmarks: (city = "abuja") =>
+    request<{ city: string; count: number; landmarks: Landmark[] }>(
+      `/v1/meta/landmarks?city=${encodeURIComponent(city)}`,
+    ),
 
   modelCard: () => request<Record<string, unknown>>("/v1/meta/model"),
 };
