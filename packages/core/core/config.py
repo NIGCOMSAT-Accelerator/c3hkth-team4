@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _CITIES_FILE = Path(__file__).parent / "cities.yaml"
@@ -46,6 +47,22 @@ class Settings(BaseSettings):
     alert_from_email: str = "alerts@climatepass.ai"
     webhook_hmac_secret: str = "dev-secret-change-me"
     web_base_url: str = "http://localhost:5173"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalise_database_url(cls, value: str) -> str:
+        """Accept the URL managed providers actually hand out.
+
+        Render, Heroku and friends expose `postgres://...`, which SQLAlchemy 2
+        rejects outright — it wants an explicit driver. Rewriting here means a
+        deployment can paste the provider's connection string verbatim instead
+        of discovering the mismatch through a stack trace at boot.
+        """
+        if value.startswith("postgres://"):
+            return "postgresql+psycopg://" + value[len("postgres://") :]
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg://" + value[len("postgresql://") :]
+        return value
 
     @property
     def cache_dir(self) -> Path:

@@ -188,6 +188,7 @@ Correlation of each feature with the final index: HAND **−0.842**, distance-to
 | [MODEL.md](MODEL.md) | Features, weights, physical justification, and an honest limitations section |
 | [DATA_SOURCES.md](DATA_SOURCES.md) | Every dataset: provider, resolution, latency, licence, required attribution |
 | [INTEGRATION.md](INTEGRATION.md) | For integrators: runnable curl for every endpoint, webhook HMAC verification, a complete Python client |
+| [DEPLOY.md](DEPLOY.md) | Deploying to Render, or to a VM with Caddy and TLS |
 | [CLAUDE.md](CLAUDE.md) | Working notes, hard rules, current status |
 
 ---

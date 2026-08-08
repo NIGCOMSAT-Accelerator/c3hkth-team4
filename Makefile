@@ -60,10 +60,16 @@ demo-up: ## Start in DEMO_MODE on an air-gapped network (no internet at all)
 demo-verify: ## Prove the demo path works with no internet at all
 	./scripts/verify-demo.sh
 
-dump-db: ## Dump the database to deploy/seed.sql.gz (seed production from this)
+# Only our own tables. A plain pg_dump also carries the tiger and topology
+# schemas that the local PostGIS image installs, and a managed Postgres
+# (Render, RDS) has no postgis_tiger_geocoder to restore them into.
+DUMP_TABLES := -t cities -t road_segments -t segment_risk -t subscriptions -t alerts -t ingestion_runs -t alembic_version
+
+dump-db: ## Dump the database to deploy/seed.sql.gz (portable; seed production from this)
 	@mkdir -p deploy
-	$(COMPOSE) exec -T db pg_dump -U climatepass --no-owner --no-acl climatepass | gzip > deploy/seed.sql.gz
+	$(COMPOSE) exec -T db pg_dump -U climatepass --no-owner --no-acl $(DUMP_TABLES) climatepass | gzip > deploy/seed.sql.gz
 	@echo "wrote deploy/seed.sql.gz ($$(du -h deploy/seed.sql.gz | cut -f1))"
+	@echo "restore needs PostGIS present first: CREATE EXTENSION IF NOT EXISTS postgis;"
 
 restore-db: ## Restore deploy/seed.sql.gz into the running database
 	@test -f deploy/seed.sql.gz || (echo "deploy/seed.sql.gz not found — run make dump-db first" && exit 1)

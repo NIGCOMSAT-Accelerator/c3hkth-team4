@@ -1,0 +1,112 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+#   Render dashboard -> New -> Blueprint -> point at this repo
+#
+# Three services and a database. No persistent disk anywhere: the API carries
+# its routing graph inside the image and reads everything else from Postgres.
+#
+# Read DEPLOY.md before running this. Two steps cannot be automated here —
+# seeding the database, and pasting each service's URL into the other's env.
+
+databases:
+  - name: climatepass-db
+    databaseName: climatepass
+    user: climatepass
+    # `free` is fine for the hackathon but Render DELETES free databases after
+    # 30 days. Move to `basic-256mb` if this needs to outlive the event.
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  # ---------------------------------------------------------------- API
+  - type: web
+    name: climatepass-api
+    runtime: docker
+    # `starter` on purpose. On `free`, Render spins the service down after 15
+    # minutes idle and the next request pays a ~50 s cold start — which is
+    # exactly what a judge clicking your link at 9pm would hit.
+    plan: starter
+    region: frankfurt # closest Render region to Nigeria
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: .
+    # Render injects $PORT and expects the process to bind it. No --reload.
+    dockerCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /health
+    autoDeploy: false # deploy deliberately, not on every push during a sprint
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: climatepass-db
+          property: connectionString
+      # Pin the served scoring date to the seeded day. Without this the API
+      # serves max(valid_date), which on a freshly seeded database is the same
+      # thing — but pinning means it stays right if anyone scores another date.
+      - key: DEMO_DATE
+        value: "2026-08-02"
+      - key: DEMO_MODE
+        value: "false"
+      - key: LOG_LEVEL
+        value: "INFO"
+      # Set to the static site's URL after its first deploy. Leaving it "*"
+      # works, but a public API that accepts any origin is a habit worth not
+      # forming.
+      - key: API_CORS_ORIGINS
+        sync: false
+      - key: WEB_BASE_URL
+        sync: false
+      - key: WEBHOOK_HMAC_SECRET
+        generateValue: true
+
+  # ---------------------------------------------------------------- Web
+  - type: web
+    name: climatepass-web
+    runtime: static
+    buildCommand: cd apps/web && npm ci --no-audit --no-fund && npm run build
+    staticPublishPath: apps/web/dist
+    autoDeploy: false
+    envVars:
+      # Baked in at BUILD time by Vite, so changing it requires a rebuild, not
+      # just a restart. Set it to the API's URL before the first build.
+      - key: VITE_API_BASE
+        sync: false
+    routes:
+      # Single-page app: unknown paths must serve index.html, or a refresh on
+      # /results returns 404 and the user loses their analysis.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+
+  # ------------------------------------------------- Alerts (optional)
+  # Only needed if you want alerts firing on the deployment. The demo can show
+  # them locally instead — see DEPLOY.md. Render cron jobs are billed per run.
+  #
+  # NOTE: with SMTP unset this writes .eml files to an EPHEMERAL disk, so they
+  # vanish. Configure SMTP_HOST here, or keep the alerts demo local where the
+  # outbox persists.
+  - type: cron
+    name: climatepass-alerts
+    runtime: docker
+    schedule: "*/30 * * * *"
+    region: frankfurt
+    dockerfilePath: ./services/alerts/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m alerts.evaluate --now
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: climatepass-db
+          property: connectionString
+      - key: DEMO_DATE
+        value: "2026-08-02"
+      - key: WEB_BASE_URL
+        sync: false
+      - key: WEBHOOK_HMAC_SECRET
+        sync: false

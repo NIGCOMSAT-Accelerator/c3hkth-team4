@@ -9,5 +9,13 @@ __pycache__
 .DS_Store
 node_modules
 apps/web/dist
-# data/ is bind-mounted, never baked into an image.
-data
+# data/ is bind-mounted in dev and never baked in — with ONE exception.
+# The API needs the 11 MB routing graph at runtime, and baking it in is what
+# lets a managed host (Render, Fly, Cloud Run) run this with no persistent
+# disk at all. Everything else here is either processing-only or huge.
+data/derived
+data/outbox
+data/cache/dem
+data/cache/wofs
+data/cache/rainfall
+data/cache/osm/abuja.graphml

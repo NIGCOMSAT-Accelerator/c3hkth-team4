@@ -21,6 +21,11 @@ data/cache/*
 data/derived/*
 data/outbox/*
 !data/cache/.gitkeep
+# The built routing graph is committed on purpose: Render and friends build
+# from the repo, so this is how the API gets its topology without a disk.
+# 11 MB, deterministic output of `processing.ingest.roads`.
+!data/cache/osm/
+!data/cache/osm/*_routing.graphml
 !data/derived/.gitkeep
 !data/outbox/.gitkeep
 

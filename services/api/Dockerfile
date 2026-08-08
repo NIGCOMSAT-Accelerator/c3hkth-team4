@@ -26,5 +26,10 @@ RUN pip install -e /app/services/api && pip install pytest
 COPY packages/core /app/packages/core
 COPY services/api /app/services/api
 
+# The prebuilt routing graph (~11 MB). With this in the image the API needs no
+# persistent disk: topology comes from here, risk from the database. Rebuild it
+# with `processing.ingest.roads` if the AOI or road filter ever changes.
+COPY data/cache/osm/abuja_municipal_routing.graphml /app/data/cache/osm/
+
 EXPOSE 8000
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
