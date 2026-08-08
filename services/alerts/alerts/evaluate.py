@@ -146,13 +146,47 @@ def evaluate_subscription(session, subscription: Subscription, valid_date, force
     }
 
 
+def _preflight(session) -> str | None:
+    """Return a human-readable reason this run cannot proceed, or None.
+
+    Worth the extra query: a scheduled job that dies on a raw
+    UndefinedTable traceback tells whoever reads the cron log nothing about
+    what to do, and "the database was never seeded" is by far the most common
+    reason this job fails on a fresh deployment.
+    """
+    exists = session.scalar(
+        text("SELECT to_regclass('public.segment_risk') IS NOT NULL")
+    )
+    if not exists:
+        return (
+            "The schema is not present in this database — table 'segment_risk' "
+            "does not exist. Apply it before scheduling alerts:\n"
+            "  psql \"$DATABASE_URL\" -c 'CREATE EXTENSION IF NOT EXISTS postgis;'\n"
+            "  gunzip -c deploy/seed.sql.gz | psql \"$DATABASE_URL\"\n"
+            "See DEPLOY_WALKTHROUGH.md steps 2 and 3."
+        )
+    return None
+
+
 def run(now: bool, force: bool, subscription_id: int | None = None) -> int:
     from alerts.deliver import deliver
 
     with session_scope() as session:
+        problem = _preflight(session)
+        if problem:
+            log.error("cannot_evaluate", reason=problem)
+            print(f"\n  {problem}\n")
+            return 1
+
         valid_date = session.scalar(text("SELECT max(valid_date) FROM segment_risk"))
         if valid_date is None:
-            log.error("no_risk_data", note="run the daily scoring pipeline first")
+            message = (
+                "No risk has been scored yet, so there is nothing to evaluate. "
+                "Run the daily scoring job (climatepass-daily on Render, or "
+                "`processing.scoring.daily`) before the alert sweep."
+            )
+            log.error("no_risk_data", note=message)
+            print(f"\n  {message}\n")
             return 1
 
         query = select(Subscription).where(Subscription.active.is_(True))
