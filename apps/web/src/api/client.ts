@@ -28,9 +28,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
   } catch {
+    // The advice has to differ by environment. In development the API is
+    // almost always just not running; in a deployed build the overwhelmingly
+    // common cause is VITE_API_BASE never being set, because Vite bakes it in
+    // at BUILD time and an unset value silently produces same-origin requests
+    // that hit the static site and 404.
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
     throw new ApiError(
       "network_unreachable",
-      "Could not reach the ClimatePass API. Check that it is running on port 8000, then retry.",
+      local
+        ? "Could not reach the ClimatePass API. Check that it is running on port 8000, then retry."
+        : BASE
+          ? `Could not reach the ClimatePass API at ${BASE}. Check that the API service is running and that it allows requests from this origin.`
+          : "This build has no API address. VITE_API_BASE was not set when the site was built — set it on the static site and redeploy with 'Clear build cache & deploy'.",
     );
   }
 

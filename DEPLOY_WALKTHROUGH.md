@@ -58,22 +58,35 @@ git remote -v
    climatepass-alerts   Cron Job
    ```
 
-6. It then asks you to fill in the variables marked "sync: false". **Enter
-   these exactly**, and do not worry that some are placeholders — step 4 fixes
-   them once you know your real URLs:
+6. It then asks you to fill in the variables marked `sync: false`.
 
-   | Service | Key | Enter for now |
+   **You do not have any URLs yet, and that is fine.** Render generates them
+   — `https://climatepass-api-a1b2.onrender.com` and similar — exactly like
+   Vercel does. It just cannot generate them before the services exist, and
+   this form runs first. So leave them empty now and set the one that matters
+   in step 4.
+
+   | Service | Key | Enter now |
    |---|---|---|
-   | climatepass-api | `DEMO_DATE` | *leave empty* |
+   | climatepass-api | `DEMO_DATE` | *empty* |
    | climatepass-api | `API_CORS_ORIGINS` | `*` |
-   | climatepass-api | `WEB_BASE_URL` | `https://example.com` |
-   | climatepass-web | `VITE_API_BASE` | `https://example.com` |
-   | climatepass-alerts | `DEMO_DATE` | *leave empty* |
-   | climatepass-alerts | `WEB_BASE_URL` | `https://example.com` |
+   | climatepass-api | `WEB_BASE_URL` | *empty* |
+   | climatepass-web | `VITE_API_BASE` | *empty* |
+   | climatepass-alerts | `DEMO_DATE` | *empty* |
+   | climatepass-alerts | `WEB_BASE_URL` | *empty* |
    | climatepass-alerts | `WEBHOOK_HMAC_SECRET` | any long random string |
 
-   Leaving `DEMO_DATE` empty is deliberate — it makes the deployment serve
-   live data rather than one frozen day.
+   Only `API_CORS_ORIGINS` needs a value now, and `*` is fine for a hackathon
+   — it means the API accepts requests from any origin, which saves you a
+   chicken-and-egg problem. Tighten it later if this outlives the event.
+
+   Empty `DEMO_DATE` is deliberate: it makes the deployment serve live data
+   rather than one frozen day.
+
+   > **Why can't Render wire this automatically?** Its `fromService` reference
+   > returns a service's *private network* hostname, which a browser cannot
+   > reach. The frontend runs in your user's browser and needs the public
+   > address, so that one value has to be set by hand.
 
 7. Click **Apply** (or **Create New Resources**).
 
@@ -130,33 +143,39 @@ seed did not apply — re-run the gunzip line and read the error.
 
 ---
 
-## Step 4 — connect the two services to each other
+## Step 4 — tell the frontend where the API is
 
-Now that everything is deployed, Render has given each service a real URL. Find
-them at the top of each service's page. They look like
-`https://climatepass-api-a1b2.onrender.com`.
+**This is the one manual wiring step, and it is a single variable.**
 
-**On `climatepass-api`** → **Environment** → edit these two, then **Save
-changes** (the service restarts by itself):
+Every service now has a real URL, shown at the top of its page in Render:
 
-| Key | Set to |
-|---|---|
-| `API_CORS_ORIGINS` | your **web** URL |
-| `WEB_BASE_URL` | your **web** URL |
+```
+climatepass-api   https://climatepass-api-a1b2.onrender.com
+climatepass-web   https://climatepass-web-c3d4.onrender.com
+```
 
-**On `climatepass-web`** → **Environment**:
+Copy the **api** URL. Then on **climatepass-web** → **Environment**:
 
 | Key | Set to |
 |---|---|
-| `VITE_API_BASE` | your **api** URL |
+| `VITE_API_BASE` | your api URL, e.g. `https://climatepass-api-a1b2.onrender.com` |
 
-Then — and this part matters — go to the top of the `climatepass-web` page and
+No trailing slash.
+
+Then — this part is not optional — at the top of the `climatepass-web` page
 click **Manual Deploy** → **Clear build cache & deploy**.
 
-> A restart is not enough here. `VITE_API_BASE` is compiled into the JavaScript
-> when the site is built, so the site must be rebuilt to pick it up. If you skip
-> this, the page loads but every request fails. It is the most common way this
-> deployment goes wrong.
+> Vite compiles `VITE_API_BASE` into the JavaScript when the site is built, so
+> a restart does nothing; the site has to be rebuilt. Skip this and the page
+> loads but every request fails. If that happens the app now tells you so
+> directly — it will say the build has no API address.
+
+**Optional, once you have the URLs.** Neither of these blocks anything:
+
+- `climatepass-api` → `WEB_BASE_URL` = the web URL (used for deep links inside
+  alert emails)
+- `climatepass-api` → `API_CORS_ORIGINS` = the web URL instead of `*`, if you
+  would rather not leave the API open to any origin
 
 ---
 
@@ -181,9 +200,15 @@ good one.
 `data/cache/osm/abuja_municipal_routing.graphml`, the routing graph did not
 reach GitHub. Check with `git ls-files data/cache/osm/` and push it.
 
-**The site loads but everything says "Could not reach the ClimatePass API".**
-`VITE_API_BASE` is wrong or the site was not rebuilt after setting it. Redo the
-end of step 4, using **Clear build cache & deploy**.
+**The site says "This build has no API address".** `VITE_API_BASE` was empty
+when the site was built. Set it and use **Clear build cache & deploy** — a
+plain restart will not pick it up.
+
+**The site says "Could not reach the ClimatePass API at https://…".** The
+address is set but the API is not answering. Check that `climatepass-api` is
+live, and open that URL with `/health` on the end — it should return
+`{"status":"ok"}`. On the free plan the first request can take ~50 s while the
+service wakes.
 
 **Browser console shows a CORS error.** `API_CORS_ORIGINS` on the API does not
 match your web URL. It must include the scheme and no trailing slash:
