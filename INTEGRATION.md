@@ -8,10 +8,19 @@ For engineers wiring ClimatePass AI into something else. Two integrators are ass
 Every example below is a runnable command with its **real response**, captured from a live instance. No API key, no auth — this is a public read API. Write endpoints (`POST /v1/subscriptions`) are open in this release; put them behind your own gateway before exposing them publicly.
 
 ```bash
-export CP=http://localhost:8000        # or your deployment
+export CP=https://climatepass-api.onrender.com          # live
+# export CP=http://localhost:8000              # or your own instance
 ```
 
-Interactive docs: `$CP/docs` · OpenAPI schema: `$CP/openapi.json`
+Every command below runs as-is against the live deployment.
+
+> **The responses shown were captured on 2026-08-02**, a wet day chosen so the
+> examples are illustrative. The live API scores every day, so your figures
+> will differ — and on a calm day `routes_identical` is legitimately `true`
+> with no detour to offer. Check `risk_date` in any response to see which day
+> you are looking at. The shapes are stable; the numbers are weather.
+
+Interactive docs: <https://climatepass-api.onrender.com/docs> · OpenAPI schema: <https://climatepass-api.onrender.com/openapi.json>
 
 ---
 
@@ -336,7 +345,7 @@ class RouteAdvice:
 
 
 class ClimatePass:
-    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 15.0):
+    def __init__(self, base_url: str = "https://climatepass-api.onrender.com", timeout: float = 15.0):
         self._client = httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout)
 
     def __enter__(self): return self

@@ -264,13 +264,15 @@ build failure above.
 
 ## What you should have at the end
 
+This deployment, for reference:
+
 ```
-https://climatepass-web-….onrender.com     the app
-https://climatepass-api-….onrender.com     the API
-https://climatepass-api-….onrender.com/docs        interactive API docs
-https://climatepass-api-….onrender.com/v1/meta/model   weights and provenance
+https://climatepass-web.onrender.com                  the app
+https://climatepass-api.onrender.com                  the API
+https://climatepass-api.onrender.com/docs             interactive API docs
+https://climatepass-api.onrender.com/v1/meta/model    weights and provenance
 ```
 
-The last one is worth putting in front of judges directly — it is the
-transparency endpoint, and it answers "where did this number come from?"
-without you having to say a word.
+Put the last one in front of judges directly — it is the transparency
+endpoint, and it answers "where did this number come from?" without you
+having to say a word.

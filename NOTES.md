@@ -151,6 +151,12 @@ If behind at Sunday noon, take 1 and 2 immediately.
 
 ---
 
+## LIVE
+
+- app: https://climatepass-web.onrender.com
+- api: https://climatepass-api.onrender.com
+- verify: `API=https://climatepass-api.onrender.com ./scripts/smoke.sh` (10 checks, ~15 s)
+
 ## CURRENT STATUS
 
 Updated: **Sat 8 Aug, ~14:30 WAT**

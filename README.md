@@ -4,6 +4,26 @@
 
 Built for the **NigComSat Accelerator 3.0 EO Hackathon**.
 
+## Live
+
+| | |
+|---|---|
+| **Application** | https://climatepass-web.onrender.com |
+| **API** | https://climatepass-api.onrender.com |
+| **Interactive API docs** | https://climatepass-api.onrender.com/docs |
+| **How the score is computed** | https://climatepass-api.onrender.com/v1/meta/model |
+
+That last one is the transparency endpoint: live weights, the risk formula,
+data provenance and the known limitations, read from the same constants the
+pipeline applies. It answers "where did this number come from?" without
+anyone having to take our word for it.
+
+Verify the deployment yourself in about two seconds:
+
+```bash
+API=https://climatepass-api.onrender.com ./scripts/smoke.sh
+```
+
 ---
 
 ## The problem
