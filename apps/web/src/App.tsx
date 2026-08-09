@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import Home from "./routes/Home";
 import Results from "./routes/Results";
 import Alerts from "./routes/Alerts";
+import Model from "./routes/Model";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -28,6 +29,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 const NAV = [
   { to: "/", label: "Analyze", end: true },
   { to: "/alerts", label: "Corridor Watch", end: false },
+  { to: "/model", label: "How it works", end: false },
 ];
 
 export default function App() {
@@ -71,6 +73,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/results" element={<Results />} />
             <Route path="/alerts" element={<Alerts />} />
+            <Route path="/model" element={<Model />} />
             <Route
               path="*"
               element={
@@ -93,12 +96,12 @@ export default function App() {
           <span>DE Africa WOfS</span>
           <span className="text-tarmac-600">/</span>
           <span>OpenStreetMap</span>
-          <a
-            href="/v1/meta/model"
+          <NavLink
+            to="/model"
             className="ml-auto text-silt underline decoration-tarmac-600 underline-offset-4 hover:text-ash"
           >
             How the score is computed
-          </a>
+          </NavLink>
         </div>
       </footer>
     </div>

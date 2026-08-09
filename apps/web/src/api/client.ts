@@ -149,6 +149,52 @@ export interface AlertCluster {
   centroid: { type: "Point"; coordinates: [number, number] };
 }
 
+export interface ModelFeature {
+  name: string;
+  weight: number;
+  source: string;
+  unit: string;
+  rationale: string;
+}
+
+export interface IngestionRun {
+  source: string;
+  status: string;
+  records: number | null;
+  notes: string | null;
+  started_at: string;
+}
+
+export interface ModelCard {
+  susceptibility: {
+    weights: Record<string, number>;
+    features: ModelFeature[];
+    wofs_buffer_m: number;
+    note: string;
+  };
+  daily_risk: {
+    weights: Record<string, number>;
+    formula: string;
+    interaction_rationale: string;
+    wetness_saturation_mm: number;
+    trigger_saturation_mm: number;
+    antecedent_days: number;
+    bands: Record<string, [number, number]>;
+  };
+  route_risk: {
+    formula: string;
+    rationale: string;
+    safest_route_cost: string;
+    severe_risk_threshold: number;
+    severe_risk_multiplier: number;
+    severe_rationale: string;
+  };
+  rainfall_provenance: string | null;
+  validation: { status?: string; note?: string; [k: string]: unknown };
+  limitations: string[];
+  recent_ingestion_runs: IngestionRun[];
+}
+
 export interface Landmark {
   name: string;
   lat: number;
@@ -211,5 +257,5 @@ export const api = {
       `/v1/meta/landmarks?city=${encodeURIComponent(city)}`,
     ),
 
-  modelCard: () => request<Record<string, unknown>>("/v1/meta/model"),
+  modelCard: () => request<ModelCard>("/v1/meta/model"),
 };
