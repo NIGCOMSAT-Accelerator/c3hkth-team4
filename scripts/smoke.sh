@@ -71,9 +71,15 @@ check "model card publishes weights and limitations" \
   "d['susceptibility']['weights']['hand']==0.4 and len(d['limitations'])>=5" \
   "$API/v1/meta/model"
 
-# The centrepiece: two distinct routes, a real delay, a real reduction.
-check "route analysis returns two distinct routes" \
-  "(not d['routes_identical']) and d['delay_seconds']>0 and d['risk_reduction_pct']>0 and len(d['recommendation'])>40" \
+# The centrepiece. NOT "two distinct routes" — that is weather-dependent, and
+# asserting it makes a correct system look broken on a calm day. On a dry day
+# no arterial reaches the High band and there is genuinely no safer detour to
+# offer; saying so is the right answer. What must always hold is that both
+# routes are well formed and the result is internally consistent: either it
+# found a better route (positive delay AND positive reduction), or it says
+# plainly why it did not.
+check "route analysis is coherent (detour found, or explained)" \
+  "all(k in d for k in ('fastest','safest','recommendation')) and d['fastest']['distance_m']>0 and d['safest']['distance_m']>0 and len(d['recommendation'])>40 and ((d['routes_identical'] and d['delay_seconds']==0 and d['risk_reduction_pct']==0 and 'identical_reason' in d) or ((not d['routes_identical']) and d['delay_seconds']>0 and d['risk_reduction_pct']>0))" \
   -X POST "$API/v1/route/analyze" -H 'Content-Type: application/json' \
   -d '{"origin":{"lat":9.1088,"lon":7.4066},"destination":{"lat":9.1518,"lon":7.3269},"lambda":3}'
 
